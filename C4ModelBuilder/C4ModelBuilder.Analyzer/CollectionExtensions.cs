@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
 using Afisha.Tickets.Core.Guard;
 
-namespace Afisha.Tickets.Core.Linq
+namespace C4ModelBuilder.Analyzer
 {
     public static class CollectionExtensions
     {

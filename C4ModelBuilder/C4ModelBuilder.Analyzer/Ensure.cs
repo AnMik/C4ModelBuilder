@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using Afisha.Tickets.Core.Linq;
+using C4ModelBuilder.Analyzer;
 
 namespace Afisha.Tickets.Core.Guard
 {

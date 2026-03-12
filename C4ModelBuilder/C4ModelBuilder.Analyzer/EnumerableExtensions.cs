@@ -1,22 +1,12 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Afisha.Tickets.Core.Guard;
 
-namespace Afisha.Tickets.Core.Linq
+namespace C4ModelBuilder.Analyzer
 {
     public static class EnumerableExtensions
     {
-        [Obsolete("Use JoinStrings")]
-        public static string Join<TSource>(this IEnumerable<TSource>? source, string separator)
-            => source != null
-                ? string.Join(separator, source)
-                : string.Empty;
-
         public static IEnumerable<IEnumerable<T>> Batch<T>(this IEnumerable<T> source, int batchSize)
         {
             using var enumerator = source.GetEnumerator();
@@ -39,15 +29,6 @@ namespace Afisha.Tickets.Core.Linq
             while (elementsLeft > 0 && enumerator.MoveNext());
 
             return batch;
-        }
-
-        [Obsolete]
-        public static void ForEach<TItem>(this IEnumerable<TItem> sequence, Action<TItem> action)
-        {
-            foreach (var item in sequence)
-            {
-                action(item);
-            }
         }
 
         public static bool IsNullOrEmpty<T>([NotNullWhen(false)] this IEnumerable<T>? sequence) => sequence?.Any() != true;
@@ -152,21 +133,6 @@ namespace Afisha.Tickets.Core.Linq
         public static bool NotContains<TItem>(this IEnumerable<TItem> sequence, Predicate<TItem> predicate)
             => sequence.All(item => !predicate(item));
 
-        public static async Task<bool> Any<TSource>(
-            this IEnumerable<TSource> source,
-            Func<TSource, Task<bool>> predicate)
-        {
-            foreach (var item in source)
-            {
-                if (await predicate(item).ConfigureAwait(false))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         public static (IEnumerable<T> Satisfied, IEnumerable<T> NotSatisfied) SplitBy<T>(
             this IEnumerable<T> items,
             Func<T, bool> splitCondition)
@@ -194,13 +160,6 @@ namespace Afisha.Tickets.Core.Linq
             return (satisfied.ToArray(), notSatisfied.ToArray());
         }
 
-        public static decimal? NullableSum(this IEnumerable<decimal?> source)
-            => source.Aggregate(
-                default(decimal?),
-                (sum, t) => sum.HasValue
-                    ? sum + (t ?? 0)
-                    : t);
-
         public static Dictionary<TKey, List<TItem>> GroupToDictionary<TKey, TItem>(
             this IEnumerable<TItem> source,
             Func<TItem, TKey> keySelector)
@@ -222,7 +181,7 @@ namespace Afisha.Tickets.Core.Linq
             Func<TItem, TKey> keySelector,
             Func<TItem, TValue> valueSelector)
             => source.GroupBy(keySelector).ToDictionary(x => x.Key, x => valueSelector(x.First()));
-        
+
         public static bool SequenceEqual<TLeft, TRight>(
             this IReadOnlyList<TLeft> sourceLeft,
             IReadOnlyList<TRight> sourceRight,
@@ -268,16 +227,6 @@ namespace Afisha.Tickets.Core.Linq
             }
 
             return false;
-        }
-
-        public static IEnumerable<T> ConcatIf<T>(this IEnumerable<T> source, bool condition, IEnumerable<T> enumerable)
-        {
-            if (condition)
-            {
-                return source.Concat(enumerable);
-            }
-
-            return source;
         }
 
         public static T MaxBy<T, TKey>(this IEnumerable<T> source, Func<T, TKey> selector)
