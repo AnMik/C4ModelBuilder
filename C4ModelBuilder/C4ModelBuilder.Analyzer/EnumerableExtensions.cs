@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Afisha.Tickets.Core.Guard;
 
 namespace C4ModelBuilder.Analyzer
 {

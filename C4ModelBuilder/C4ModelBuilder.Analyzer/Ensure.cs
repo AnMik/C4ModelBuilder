@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using C4ModelBuilder.Analyzer;
 
-namespace Afisha.Tickets.Core.Guard
+namespace C4ModelBuilder.Analyzer
 {
     public static class Ensure
     {

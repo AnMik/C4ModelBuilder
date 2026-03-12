@@ -5,29 +5,33 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace C4ModelBuilder.Analyzer;
 
 internal sealed class MethodAnalyzer(
-    IReadOnlyCollection<ParsedProject> projects,
-    Dictionary<string, (ClassDeclarationSyntax, MethodDeclarationSyntax)> cqrsHandlersMapping)
+    ParsedSolution parsedSolution,
+    Dictionary<string, (ClassDeclarationSyntax, MethodDeclarationSyntax)> cqrsHandlersMapping,
+    int maxDepth)
 {
-    public async Task AnalyzeMethod(ClassDeclarationSyntax classSyntax, MethodDeclarationSyntax methodSyntax, int depth)
+    public async Task AnalyzeMethod(
+        ClassDeclarationSyntax classSyntax,
+        MethodDeclarationSyntax methodSyntax,
+        int currentDepth)
     {
-        if (depth > 15)
+        if (currentDepth > maxDepth)
         {
-            WriteWithTab(depth + 1, "<Limit>");
+            WriteWithTab(currentDepth + 1, "<Limit>");
             return;
         }
 
-        WriteWithTab(depth, ToString(methodSyntax));
+        WriteWithTab(currentDepth, ToString(methodSyntax));
 
         var isEmpty = true;
         foreach (var (subClassSyntax, subMethodSyntax) in GetInvokedMethods(classSyntax, methodSyntax))
         {
-            await AnalyzeMethod(subClassSyntax, subMethodSyntax, depth + 1);
+            await AnalyzeMethod(subClassSyntax, subMethodSyntax, currentDepth + 1);
             isEmpty = false;
         }
 
         if (isEmpty)
         {
-            WriteWithTab(depth + 1, "<Empty>");
+            WriteWithTab(currentDepth + 1, "<Empty>");
         }
     }
 
@@ -35,57 +39,43 @@ internal sealed class MethodAnalyzer(
         ClassDeclarationSyntax classSyntax,
         MethodDeclarationSyntax methodSyntax)
     {
-        var methodSemanticModel = projects
+        var methodSemanticModel = parsedSolution
+                .Projects
                 .Where(x => x.Compilation.SyntaxTrees.Contains(methodSyntax.SyntaxTree))
                 .Select(x => x.Compilation.GetSemanticModel(methodSyntax.SyntaxTree))
                 .FirstOrDefault()
             ?? throw new InvalidOperationException($"Не найдена семантическая модель для метода {methodSyntax}");
 
-        var parentClassFields = classSyntax
-            .Members
-            .OfType<FieldDeclarationSyntax>()
-            .SelectMany(x => x.Declaration.Variables)
-            .Select(
-                x => (FieldName: x.Identifier.Text,
-                      FieldType: (methodSemanticModel.GetDeclaredSymbol(x) as IFieldSymbol)?.Type as INamedTypeSymbol))
-            .Where(
-                x => x.FieldType is
-                    { TypeKind: TypeKind.Interface or TypeKind.Class, MetadataToken: 0, Name: not "IMapper" and not "ITaggableCache" })
-            .ToDictionary(x => x.FieldName, x => x.FieldType!);
-
-        foreach (var methodInvocations in methodSyntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        foreach (var methodInvocation in methodSyntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
-            var invocationChildNodes = methodInvocations.ChildNodes().ToList();
-
-            var identifierNameSyntax = invocationChildNodes
+            var nameSyntaxesOfMethodInvocations = methodInvocation
+                .ChildNodes()
                 .OfType<MemberAccessExpressionSyntax>()
                 .SelectMany(x => x.ChildNodes())
                 .OfType<IdentifierNameSyntax>()
                 .FirstOrDefault();
 
-            var fieldTypeFullName = identifierNameSyntax != null
-                ? methodSemanticModel.GetTypeInfo(identifierNameSyntax).Type?.ToDisplayString()
+            var fieldTypeFullName = nameSyntaxesOfMethodInvocations != null
+                ? methodSemanticModel.GetTypeInfo(nameSyntaxesOfMethodInvocations).Type?.ToDisplayString()
                 : null;
 
             if (fieldTypeFullName is "Rds.Cqrs.Queries.IQueryService" or "Rds.Cqrs.Commands.ICommandProcessor")
             {
-                var t1 = invocationChildNodes
+                var invocationArguments = methodInvocation
+                    .ChildNodes()
                     .OfType<ArgumentListSyntax>()
                     .SelectMany(x => x.ChildNodes())
                     .OfType<ArgumentSyntax>()
                     .SelectMany(x => x.ChildNodes())
+                    .ToList();
+
+                var baseRequest = invocationArguments
                     .OfType<ObjectCreationExpressionSyntax>()
                     .SelectMany(x => x.ChildNodes())
                     .OfType<IdentifierNameSyntax>()
-                    .FirstOrDefault()
-                    ?.Identifier
-                    .Text;
+                    .Cast<SimpleNameSyntax>();
 
-                var t2 = invocationChildNodes
-                    .OfType<ArgumentListSyntax>()
-                    .SelectMany(x => x.ChildNodes())
-                    .OfType<ArgumentSyntax>()
-                    .SelectMany(x => x.ChildNodes())
+                var genericRequest = invocationArguments
                     .OfType<InvocationExpressionSyntax>()
                     .SelectMany(x => x.ChildNodes())
                     .OfType<MemberAccessExpressionSyntax>()
@@ -93,64 +83,107 @@ internal sealed class MethodAnalyzer(
                     .OfType<ObjectCreationExpressionSyntax>()
                     .SelectMany(x => x.ChildNodes())
                     .OfType<GenericNameSyntax>()
-                    .FirstOrDefault()
-                    ?.Identifier.Text; // todo: GetObjectsWithLinks<Widget>
+                    .Cast<SimpleNameSyntax>();
 
-                var t3 = invocationChildNodes
-                    .OfType<ArgumentListSyntax>()
-                    .SelectMany(x => x.ChildNodes())
-                    .OfType<ArgumentSyntax>()
-                    .SelectMany(x => x.ChildNodes())
+                var genericRequestWithReadPreference = invocationArguments
                     .OfType<ObjectCreationExpressionSyntax>()
                     .SelectMany(x => x.ChildNodes())
                     .OfType<GenericNameSyntax>()
-                    .FirstOrDefault()
-                    ?.Identifier.Text; // invocationsyntax (.withreadpreference)
+                    .Cast<SimpleNameSyntax>();
 
-                var queryName = t1 ?? t2 ?? t3;
+                var queryName = baseRequest
+                        .Concat(genericRequest)
+                        .Concat(genericRequestWithReadPreference)
+                        .FirstOrDefault()
+                        ?.Identifier.Text
+                    ?? string.Empty;
 
-                // todo: without new (var query)
-
-                var handlerTypedSymbol = cqrsHandlersMapping.GetValueOrDefault(queryName ?? string.Empty);
-                if (handlerTypedSymbol == default)
+                if (cqrsHandlersMapping.TryGetValue(queryName, out var handlerTypedSymbol))
                 {
-                    Console.WriteLine($"Не найден обработчик {queryName}.");
-                    continue;
+                    yield return handlerTypedSymbol;
                 }
-
-                yield return handlerTypedSymbol;
+                else
+                {
+                    throw new InvalidOperationException($"Не найден cqrs хендлер для {queryName}.");
+                }
             }
             else
             {
-                var fieldName =
-                    (invocationChildNodes.OfType<MemberAccessExpressionSyntax>().FirstOrDefault()?.Expression as IdentifierNameSyntax)
-                    ?.Identifier.Text;
-                // todo: methodSemanticModel.GetSymbolInfo(invocationChildNodes.OfType<MemberAccessExpressionSyntax>().FirstOrDefault().Expression)
+                var parentClassFields = classSyntax
+                    .Members
+                    .OfType<FieldDeclarationSyntax>()
+                    .SelectMany(x => x.Declaration.Variables)
+                    .Select(
+                        x => (FieldName: x.Identifier.Text,
+                              FieldType: (methodSemanticModel.GetDeclaredSymbol(x) as IFieldSymbol)?.Type as INamedTypeSymbol))
+                    .Where(
+                        x => x.FieldType is
+                        {
+                            TypeKind: TypeKind.Interface or TypeKind.Class,
+                            MetadataToken: 0,
+                            Name: not "IMapper" and not "ITaggableCache"
+                        })
+                    .ToDictionary(x => x.FieldName, x => x.FieldType!);
 
-                if (fieldName != null && parentClassFields.TryGetValue(fieldName, out var fieldTypeSymbol))
+                var fieldName = methodInvocation
+                    .ChildNodes()
+                    .OfType<MemberAccessExpressionSyntax>()
+                    .Select(x => x.Expression)
+                    .OfType<IdentifierNameSyntax>()
+                    .FirstOrDefault()
+                    ?.Identifier.Text;
+
+                if (fieldName == null)
                 {
+                    var methodInvocationSyntaxName =
+                        methodInvocation
+                            .ChildNodes()
+                            .OfType<IdentifierNameSyntax>()
+                            .FirstOrDefault()
+                            ?.Identifier.Text;
+
+                    var methodDeclarationSyntax = classSyntax
+                        .Members
+                        .OfType<MethodDeclarationSyntax>()
+                        .FirstOrDefault(x => x.Identifier.Text == methodInvocationSyntaxName);
+
+                    if (methodDeclarationSyntax != null)
+                    {
+                        yield return (classSyntax, methodDeclarationSyntax);
+                    }
+                }
+                else
+                {
+                    if (!parentClassFields.TryGetValue(fieldName, out var fieldTypeSymbol))
+                    {
+                        continue;
+                    }
+
                     switch (fieldTypeSymbol.TypeKind)
                     {
                         case TypeKind.Interface:
                         {
-                            var classSyntax2 = projects
+                            var implementingClassSyntax = parsedSolution
+                                .Projects
                                 .SelectMany(x => x.Classes)
-                                .Select(@class => (@class.ClassDeclarationSyntax, @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax)))
-                                .FirstOrDefault(x => x.Item2?.AllInterfaces.Any(y => y.ToDisplayString() == fieldTypeSymbol.ToDisplayString()) == true);
+                                .Select(x => x.SemanticModel.GetDeclaredSymbol(x.ClassDeclarationSyntax))
+                                .FirstOrDefault(
+                                    @class => @class?.AllInterfaces.Any(x => x.ToDisplayString() == fieldTypeSymbol.ToDisplayString())
+                                        == true);
 
-                            if (classSyntax2 == default)
+                            if (implementingClassSyntax == null)
                             {
                                 continue;
                             }
 
-                            var methodSymbol2 = FindMethodImplementation(methodSemanticModel, methodInvocations, classSyntax2.Item2);
+                            var methodSymbol = methodSemanticModel.FindMethodImplementation(implementingClassSyntax, methodInvocation);
 
-                            if (methodSymbol2 == null)
+                            if (methodSymbol == null)
                             {
                                 continue;
                             }
 
-                            var invokedMethodSyntax = GetMethodDeclarationFromSymbol(projects, methodSymbol2);
+                            var invokedMethodSyntax = parsedSolution.FindMethodDeclaration(methodSymbol);
 
                             if (invokedMethodSyntax != null)
                             {
@@ -161,11 +194,11 @@ internal sealed class MethodAnalyzer(
                         }
                         case TypeKind.Class:
                         {
-                            var methodSymbol = FindMethodImplementation(methodSemanticModel, methodInvocations, fieldTypeSymbol)
+                            var methodSymbol = methodSemanticModel.FindMethodImplementation(fieldTypeSymbol, methodInvocation)
                                 ?? throw new InvalidOperationException(
                                     $"Не найден метод {methodSemanticModel} в классе {fieldTypeSymbol.ToDisplayString()}.");
 
-                            var invokedMethodSyntax = GetMethodDeclarationFromSymbol(projects, methodSymbol)
+                            var invokedMethodSyntax = parsedSolution.FindMethodDeclaration(methodSymbol)
                                 ?? throw new InvalidOperationException(
                                     $"Не найден метод {methodSemanticModel} в классе {fieldTypeSymbol.ToDisplayString()}.");
 
@@ -174,86 +207,11 @@ internal sealed class MethodAnalyzer(
                             break;
                         }
                         default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                }
-                else
-                {
-                    var fieldName2 = invocationChildNodes.OfType<IdentifierNameSyntax>().FirstOrDefault()?.Identifier.Text;
-
-                    var methodDeclarationSyntax = classSyntax.Members.OfType<MethodDeclarationSyntax>()
-                        .FirstOrDefault(x => x.Identifier.Text == fieldName2);
-
-                    if (methodDeclarationSyntax != null)
-                    {
-                        yield return (classSyntax, methodDeclarationSyntax);
-                    }
-                    else
-                    {
-                        //Console.WriteLine($"{fieldName2} - {string.Join("", invocationChildNodes.Select(x => x.ToString()))} - skipped");
+                            throw new ArgumentOutOfRangeException(nameof(fieldTypeSymbol.TypeKind), fieldTypeSymbol.TypeKind, "");
                     }
                 }
             }
         }
-    }
-
-    private static (ClassDeclarationSyntax, MethodDeclarationSyntax)? GetMethodDeclarationFromSymbol(
-        IReadOnlyCollection<ParsedProject> projects,
-        IMethodSymbol methodSymbol)
-    {
-        var methodLocation = methodSymbol.Locations.FirstOrDefault(x => x.IsInSource);
-
-        var methodFilePath = methodLocation?.SourceTree?.FilePath
-            ?? throw new InvalidOperationException($"Не найден путь к файлу метода {methodSymbol}");
-
-        var document = projects.SelectMany(x => x.Classes).FirstOrDefault(x => x.Document.FilePath == methodFilePath);
-
-        var method = document?.SyntaxRootNode.FindNode(methodLocation.SourceSpan) as MethodDeclarationSyntax;
-
-        if (method == null)
-        {
-            return null;
-        }
-        return (document.ClassDeclarationSyntax, method);
-    }
-
-    private static IMethodSymbol? FindMethodImplementation(
-        SemanticModel methodSemanticModel,
-        InvocationExpressionSyntax invocation,
-        INamedTypeSymbol implementingClass)
-    {
-        if (methodSemanticModel.GetSymbolInfo(invocation).Symbol is IMethodSymbol invokedMethodSymbol)
-        {
-            return FindImplementationInClass(invokedMethodSymbol, implementingClass);
-        }
-
-        return null;
-    }
-
-    private static IMethodSymbol? FindImplementationInClass(IMethodSymbol interfaceMethod, INamedTypeSymbol implementingClass)
-    {
-        foreach (var member in implementingClass.GetMembers().OfType<IMethodSymbol>())
-        {
-            if (member.IsImplement(interfaceMethod))
-            {
-                return member;
-            }
-        }
-
-        var baseType = implementingClass.BaseType;
-        while (baseType != null)
-        {
-            foreach (var member in baseType.GetMembers().OfType<IMethodSymbol>())
-            {
-                if (member.IsImplement(interfaceMethod))
-                {
-                    return member;
-                }
-            }
-            baseType = baseType.BaseType;
-        }
-
-        return null;
     }
 
     private static string ToString(MethodDeclarationSyntax method)

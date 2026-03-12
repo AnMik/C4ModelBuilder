@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using Afisha.Tickets.Core.Guard;
 
 namespace C4ModelBuilder.Analyzer
 {

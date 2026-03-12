@@ -7,40 +7,41 @@ namespace C4ModelBuilder.Analyzer;
 internal static class CqrsAnalyzer
 {
     public static IEnumerable<(string, ClassDeclarationSyntax, MethodDeclarationSyntax)> GetRequestHandlersMapping(
-        IReadOnlyCollection<ParsedProject> projects)
+        ParsedSolution parsedSolution)
     {
-        foreach (var requestClass in projects.SelectMany(x => x.Classes).Where(@class => IsCqrsRequest(@class.ClassDeclarationSyntax, @class.SemanticModel)))
+        var cqrsRequestClasses = parsedSolution
+            .Projects
+            .SelectMany(x => x.Classes)
+            .Where(@class => IsCqrsRequest(@class.ClassDeclarationSyntax, @class.SemanticModel));
+
+        foreach (var cqrsRequestClass in cqrsRequestClasses)
         {
-            foreach (var @class in projects.SelectMany(x => x.Classes))
+            foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
             {
-                var queryName = requestClass.ClassDeclarationSyntax.Identifier.Text;
+                var cqrsRequestName = cqrsRequestClass.ClassDeclarationSyntax.Identifier.Text;
 
                 if (@class.ClassDeclarationSyntax.BaseList?.Types.Any(
-                        type => DoesImplementCqrsHandler(queryName, type.Type, @class.SemanticModel))
-                    == true)
+                        type => DoesImplementCqrsHandler(cqrsRequestName, type.Type, @class.SemanticModel))
+                    != true)
                 {
-                    var method = @class.ClassDeclarationSyntax.Members
-                        .OfType<MethodDeclarationSyntax>()
-                        .First(x => x.Identifier.Text == "HandleAsync");
-
-                    yield return (queryName, @class.ClassDeclarationSyntax, method);
-
-                    break;
+                    continue;
                 }
+
+                var cqrsHandlerMethod = @class.ClassDeclarationSyntax.Members
+                    .OfType<MethodDeclarationSyntax>()
+                    .FirstOrDefault(x => x.Identifier.Text == "HandleAsync")
+                    ?? throw new InvalidOperationException("В cqrs хендлере не найден метод HandleAsync().");
+
+                yield return (cqrsRequestName, @class.ClassDeclarationSyntax, cqrsHandlerMethod);
+                break;
             }
         }
     }
 
     private static bool IsCqrsRequest(ClassDeclarationSyntax @class, SemanticModel semanticModel)
-        =>
-        // @class.BaseList?.Types.Any(
-        //     x => (x.Type as SimpleNameSyntax)?.Identifier.Text is "IQuery" or "ICommand" or "IResultingCommand")
-        semanticModel.GetDeclaredSymbol(@class)
-            ?.AllInterfaces
-            .Any(x => x.Name is "IQuery" or "ICommand" or "IResultingCommand")
-        == true
-        && @class.Modifiers.All(
-            syntaxToken => !syntaxToken.IsKind(SyntaxKind.StructKeyword) && !syntaxToken.IsKind(SyntaxKind.PrivateKeyword));
+        => semanticModel.GetDeclaredSymbol(@class)?.AllInterfaces.Any(x => x.Name is "IQuery" or "ICommand" or "IResultingCommand") == true
+            && @class.Modifiers.All(
+                syntaxToken => !syntaxToken.IsKind(SyntaxKind.StructKeyword) && !syntaxToken.IsKind(SyntaxKind.PrivateKeyword));
 
     private static bool DoesImplementCqrsHandler(string requestName, TypeSyntax typeSyntax, SemanticModel semanticModel)
         => semanticModel.GetTypeInfo(typeSyntax).Type is INamedTypeSymbol { IsGenericType: true } typeSymbol

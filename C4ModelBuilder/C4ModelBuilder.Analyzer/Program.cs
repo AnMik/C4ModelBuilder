@@ -1,19 +1,24 @@
-using Afisha.Tickets.Core.C4;
+using System.Diagnostics;
 using C4ModelBuilder.Analyzer;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 
+var sw = new Stopwatch();
+
 using var workspace = MSBuildWorkspace.Create();
 var solution = await workspace.OpenSolutionAsync("C:\\Repos\\kassa\\Afisha.Tickets.All.sln");
 
-var parsedProjects = await SolutionParser.Parse(solution);
-var requestHandlersMapping = CqrsAnalyzer.GetRequestHandlersMapping(parsedProjects).GroupBy(x => x.Item1, (x, y) => (x, y.First().Item2, y.First().Item3)).ToDictionary(x => x.x, x => (x.Item2, x.Item3));
+var parsedSolution = await SolutionParser.Parse(solution);
+var requestHandlersMapping = CqrsAnalyzer
+    .GetRequestHandlersMapping(parsedSolution)
+    .GroupBy(x => x.Item1, (x, y) => (x, y.First().Item2, y.First().Item3))
+    .ToDictionary(x => x.x, x => (x.Item2, x.Item3));
 
 var componentAttributeName = nameof(C4ComponentAttribute)[..^(nameof(Attribute).Length)];
 
-var methodAnalyzer = new MethodAnalyzer(parsedProjects, requestHandlersMapping);
+var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth: 15);
 
-foreach (var doc in parsedProjects.SelectMany(x => x.Classes))
+foreach (var doc in parsedSolution.Projects.SelectMany(x => x.Classes))
 {
     var @class = doc.ClassDeclarationSyntax;
 
@@ -28,8 +33,8 @@ foreach (var doc in parsedProjects.SelectMany(x => x.Classes))
 
     foreach (var method in mapiMethodsWithAttribute)
     {
-        await methodAnalyzer.AnalyzeMethod(@class, method, depth: 0);
+        await methodAnalyzer.AnalyzeMethod(@class, method, currentDepth: 0);
     }
 }
 
-Console.WriteLine("Finished");
+Console.WriteLine($"Finished: {sw.Elapsed}.");

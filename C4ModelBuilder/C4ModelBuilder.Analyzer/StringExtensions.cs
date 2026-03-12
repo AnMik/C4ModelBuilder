@@ -1,8 +1,6 @@
-﻿using System;
-using System.Text;
-using Afisha.Tickets.Core.Guard;
+﻿using System.Text;
 
-namespace Afisha.Tickets.Core.Objects
+namespace C4ModelBuilder.Analyzer
 {
     public static class StringExtensions
     {

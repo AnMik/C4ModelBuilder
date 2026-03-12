@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Afisha.Tickets.Core.C4
+﻿namespace C4ModelBuilder.Analyzer
 {
     /// <summary>
     /// Level 1
@@ -12,32 +10,22 @@ namespace Afisha.Tickets.Core.C4
     /// Level 2
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
-    public class C4ContainerAttribute : Attribute
+    public class C4ContainerAttribute(string name, string description) : Attribute
     {
-        public string Name { get; }
-        public string Description { get; }
+        public string Name { get; } = name;
 
-        public C4ContainerAttribute(string name, string description)
-        {
-            Name = name;
-            Description = description;
-        }
+        public string Description { get; } = description;
     }
 
     /// <summary>
     /// Level 3
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Method)]
-    public class C4ComponentAttribute : Attribute
+    public class C4ComponentAttribute(string name, string description) : Attribute
     {
-        public string Name { get; }
-        public string Description { get; }
+        public string Name { get; } = name;
 
-        public C4ComponentAttribute(string name, string description)
-        {
-            Name = name;
-            Description = description;
-        }
+        public string Description { get; } = description;
     }
 
     /// <summary>
