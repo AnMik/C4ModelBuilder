@@ -1,39 +1,33 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-public class ParsedProject
+namespace C4ModelBuilder.Analyzer;
+
+internal sealed record ParsedSolution(IReadOnlyCollection<ParsedProject> Projects)
 {
-    public class Doc
+    public (ClassDeclarationSyntax, MethodDeclarationSyntax)? FindMethodDeclaration(IMethodSymbol methodSymbol)
     {
-        public Document Document { get; }
-        public SyntaxTree SyntaxTree { get; }
-        public SemanticModel SemanticModel { get; }
-        public IReadOnlyCollection<ClassDeclarationSyntax> ClassDeclarationSyntaxes { get; }
-        public SyntaxNode SyntaxRootNode { get; }
+        var methodLocation = methodSymbol.Locations.FirstOrDefault(x => x.IsInSource);
 
-        public Doc(
-            Document document,
-            SyntaxTree syntaxTree,
-            SyntaxNode syntaxRootNode,
-            SemanticModel semanticModel,
-            IReadOnlyCollection<ClassDeclarationSyntax> classDeclarationSyntaxes)
+        var methodFilePath = methodLocation?.SourceTree?.FilePath
+            ?? throw new InvalidOperationException($"Не найден путь к файлу метода {methodSymbol}");
+
+        var document = Projects.SelectMany(x => x.Classes).FirstOrDefault(x => x.Document.FilePath == methodFilePath);
+
+        if (document?.SyntaxRootNode.FindNode(methodLocation.SourceSpan) is not MethodDeclarationSyntax method)
         {
-            Document = document;
-            SyntaxTree = syntaxTree;
-            SemanticModel = semanticModel;
-            ClassDeclarationSyntaxes = classDeclarationSyntaxes;
-            SyntaxRootNode = syntaxRootNode;
+            return null;
         }
-    }
 
-    public Project Project { get; }
-    public Compilation Compilation { get; }
-    public IReadOnlyCollection<Doc> Docs { get; }
-
-    public ParsedProject(Project project, Compilation compilation, IReadOnlyCollection<Doc> docs)
-    {
-        Project = project;
-        Compilation = compilation;
-        Docs = docs;
+        return (document.ClassDeclarationSyntax, method);
     }
+};
+
+internal sealed record ParsedProject(Compilation Compilation, IReadOnlyCollection<ParsedProject.Class> Classes)
+{
+    public sealed record Class(
+        Document Document,
+        SyntaxNode SyntaxRootNode,
+        SemanticModel SemanticModel,
+        ClassDeclarationSyntax ClassDeclarationSyntax);
 }
