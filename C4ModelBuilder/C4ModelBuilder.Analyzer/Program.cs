@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using C4ModelBuilder.Analyzer;
+using C4ModelBuilder.Models;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 

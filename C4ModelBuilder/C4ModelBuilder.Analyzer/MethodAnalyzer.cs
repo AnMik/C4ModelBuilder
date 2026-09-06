@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using C4ModelBuilder.Models;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -21,20 +22,13 @@ internal sealed class MethodAnalyzer(
 
         var node = new MemberNode(ToString(methodSyntax));
 
-        var hasChildren = false;
         foreach (var (subClassSyntax, subMethodSyntax) in GetInvokedMethods(classSyntax, methodSyntax))
         {
             var childNode = await AnalyzeMethod(subClassSyntax, subMethodSyntax, currentDepth + 1);
             if (childNode != null)
             {
                 node.AddChild(childNode);
-                hasChildren = true;
             }
-        }
-
-        if (!hasChildren)
-        {
-            node.IsEmpty = true;
         }
 
         return node;
