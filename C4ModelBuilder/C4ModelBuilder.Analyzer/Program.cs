@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 
 var sw = new Stopwatch();
+sw.Start();
 
 using var workspace = MSBuildWorkspace.Create();
 var solution = await workspace.OpenSolutionAsync("C:\\Repos\\kassa\\Afisha.Tickets.All.sln");
@@ -17,6 +18,8 @@ var requestHandlersMapping = CqrsAnalyzer
 var componentAttributeName = nameof(C4ComponentAttribute)[..^(nameof(Attribute).Length)];
 
 var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth: 15);
+
+var root = new MemberNode("Root");
 
 foreach (var doc in parsedSolution.Projects.SelectMany(x => x.Classes))
 {
@@ -33,8 +36,14 @@ foreach (var doc in parsedSolution.Projects.SelectMany(x => x.Classes))
 
     foreach (var method in mapiMethodsWithAttribute)
     {
-        await methodAnalyzer.AnalyzeMethod(@class, method, currentDepth: 0);
+        var node = await methodAnalyzer.AnalyzeMethod(@class, method, currentDepth: 0);
+        if (node != null)
+        {
+            root.AddChild(node);
+        }
     }
 }
+
+MethodAnalyzer.WriteHierarchy(root);
 
 Console.WriteLine($"Finished: {sw.Elapsed}.");

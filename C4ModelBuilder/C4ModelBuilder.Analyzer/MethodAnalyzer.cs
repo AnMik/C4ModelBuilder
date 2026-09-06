@@ -9,30 +9,35 @@ internal sealed class MethodAnalyzer(
     Dictionary<string, (ClassDeclarationSyntax, MethodDeclarationSyntax)> cqrsHandlersMapping,
     int maxDepth)
 {
-    public async Task AnalyzeMethod(
+    public async Task<MemberNode?> AnalyzeMethod(
         ClassDeclarationSyntax classSyntax,
         MethodDeclarationSyntax methodSyntax,
         int currentDepth)
     {
         if (currentDepth > maxDepth)
         {
-            WriteWithTab(currentDepth + 1, "<Limit>");
-            return;
+            return null;
         }
 
-        WriteWithTab(currentDepth, ToString(methodSyntax));
+        var node = new MemberNode(ToString(methodSyntax));
 
-        var isEmpty = true;
+        var hasChildren = false;
         foreach (var (subClassSyntax, subMethodSyntax) in GetInvokedMethods(classSyntax, methodSyntax))
         {
-            await AnalyzeMethod(subClassSyntax, subMethodSyntax, currentDepth + 1);
-            isEmpty = false;
+            var childNode = await AnalyzeMethod(subClassSyntax, subMethodSyntax, currentDepth + 1);
+            if (childNode != null)
+            {
+                node.AddChild(childNode);
+                hasChildren = true;
+            }
         }
 
-        if (isEmpty)
+        if (!hasChildren)
         {
-            WriteWithTab(currentDepth + 1, "<Empty>");
+            node.IsEmpty = true;
         }
+
+        return node;
     }
 
     private IEnumerable<(ClassDeclarationSyntax, MethodDeclarationSyntax)> GetInvokedMethods(
@@ -225,4 +230,21 @@ internal sealed class MethodAnalyzer(
     private static string GetTabs(int count) => $"{Enumerable.Repeat("   ", count).JoinStrings(string.Empty)}\u2514\u2500\u2500";
 
     private static void WriteWithTab(int depth, string text) => Console.WriteLine($"{GetTabs(depth)}{text}");
+
+    public static void WriteHierarchy(MemberNode node, int depth = 0)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        WriteWithTab(depth, node.MethodSignature);
+
+        if (node.Children.Count == 0)
+        {
+            WriteWithTab(depth + 1, "<Empty>");
+            return;
+        }
+
+        foreach (var child in node.Children)
+        {
+            WriteHierarchy(child, depth + 1);
+        }
+    }
 }
