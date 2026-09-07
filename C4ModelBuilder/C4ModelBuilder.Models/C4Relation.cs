@@ -1,4 +1,4 @@
-namespace C4ModelBuilder.PlantUmlCreator;
+namespace C4ModelBuilder.Models;
 
 public readonly record struct C4Relation(
     string FromComponentAlias,

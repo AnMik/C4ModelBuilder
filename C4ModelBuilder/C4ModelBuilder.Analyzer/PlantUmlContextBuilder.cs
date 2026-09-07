@@ -1,6 +1,7 @@
+using C4ModelBuilder.Analyzer.Models;
 using C4ModelBuilder.Models;
 
-namespace C4ModelBuilder.PlantUmlCreator;
+namespace C4ModelBuilder.Analyzer;
 
 /// <summary>
 /// Рекурсивно обходит MemberNode, собирает <see cref="C4Component"/> и <see cref="C4Relation"/>.
@@ -12,7 +13,7 @@ internal static class PlantUmlContextBuilder
     /// а для каждой пары (вызывающий → вызываемый) — связь.
     /// Компоненты и связи дедуплицируются.
     /// </summary>
-    public static PlantUmlContext Build(MemberNode root)
+    public static PlantUmlC4ComponentDiagram Build(MemberNode root)
     {
         var components = new HashSet<(string Alias, string Name, string? Description, string? Technology)>();
         var relations = new HashSet<(string From, string To)>();
@@ -49,15 +50,13 @@ internal static class PlantUmlContextBuilder
             }
         }
 
-        return new PlantUmlContext
-        {
-            Components = components
+        return new PlantUmlC4ComponentDiagram(
+            Components: components
                 .Select(x => new C4Component(x.Alias, x.Name, x.Description, x.Technology))
                 .ToList(),
-            Relations = relations
+            Relations: relations
                 .Select(x => new C4Relation(x.From, x.To))
-                .ToList(),
-        };
+                .ToList());
     }
 
     private static string? ExtractClassName(string methodSignature)
@@ -73,10 +72,4 @@ internal static class PlantUmlContextBuilder
         // Alias и DisplayName совпадают (не знаем настоящего имени без атрибутов)
         components.Add((className, className, null, null));
     }
-}
-
-public sealed record PlantUmlContext
-{
-    public IReadOnlyList<C4Component> Components { get; init; } = [];
-    public IReadOnlyList<C4Relation> Relations { get; init; } = [];
 }

@@ -1,6 +1,6 @@
-﻿namespace C4ModelBuilder.Models;
+﻿namespace C4ModelBuilder.Analyzer.Models;
 
-public sealed class MemberNode(string methodSignature)
+internal sealed class MemberNode(string methodSignature)
 {
     /// <summary>
     /// Сигнатура метода (например, "AccountController.GetStoredPaymentCards(CancellationToken)")

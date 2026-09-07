@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace C4ModelBuilder.Analyzer;
+namespace C4ModelBuilder.Analyzer.Infrastructure;
 
 internal static class EnumerableExtensions
 {

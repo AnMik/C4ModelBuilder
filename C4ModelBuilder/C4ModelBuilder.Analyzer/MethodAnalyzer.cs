@@ -1,4 +1,5 @@
-﻿using C4ModelBuilder.Models;
+﻿using C4ModelBuilder.Analyzer.Infrastructure;
+using C4ModelBuilder.Analyzer.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
