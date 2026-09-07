@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace C4ModelBuilder.Analyzer;
+namespace C4ModelBuilder.Analyzer.Infrastructure;
 
 internal static class Ensure
 {

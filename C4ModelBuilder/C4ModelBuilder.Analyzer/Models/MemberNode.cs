@@ -1,6 +1,6 @@
-﻿namespace C4ModelBuilder.Analyzer;
+﻿namespace C4ModelBuilder.Analyzer.Models;
 
-internal sealed class MemberNode(string methodSignature, bool isEmpty = false)
+internal sealed class MemberNode(string methodSignature)
 {
     /// <summary>
     /// Сигнатура метода (например, "AccountController.GetStoredPaymentCards(CancellationToken)")
@@ -11,11 +11,6 @@ internal sealed class MemberNode(string methodSignature, bool isEmpty = false)
     /// Дочерние узлы — вызовы методов из текущего метода
     /// </summary>
     public List<MemberNode> Children { get; } = [];
-
-    /// <summary>
-    /// Признак того, что у метода нет значимых вызовов (например, тело пустое)
-    /// </summary>
-    public bool IsEmpty { get; set; } = isEmpty;
 
     /// <summary>
     /// Добавить дочерний узел

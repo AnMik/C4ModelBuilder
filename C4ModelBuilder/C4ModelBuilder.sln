@@ -2,6 +2,18 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Analyzer", "C4ModelBuilder.Analyzer\C4ModelBuilder.Analyzer.csproj", "{B819DAC2-346E-43F2-935F-80AB36BDF980}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.PlantUmlCreator", "C4ModelBuilder.PlantUmlCreator\C4ModelBuilder.PlantUmlCreator.csproj", "{B93452E5-AE17-43F4-B2C8-E255984FC84B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{4FA501B1-0058-4149-8BA1-4564D5858B0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.PlantUmlCreator.Tests", "C4ModelBuilder.PlantUmlCreator.Tests\C4ModelBuilder.PlantUmlCreator.Tests.csproj", "{37487C34-AFF5-4686-8D21-3BE61E0C2E18}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Models", "C4ModelBuilder.Models\C4ModelBuilder.Models.csproj", "{593EB38B-88ED-4AD5-B137-C6EFD7ABBB09}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{3D7CA934-618A-476E-9220-F6B2B0790A56}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Examples", "C4ModelBuilder.Examples\C4ModelBuilder.Examples.csproj", "{691D7D77-B2A0-44D9-98F9-1B81C248697A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +24,25 @@ Global
 		{B819DAC2-346E-43F2-935F-80AB36BDF980}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B819DAC2-346E-43F2-935F-80AB36BDF980}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B819DAC2-346E-43F2-935F-80AB36BDF980}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B93452E5-AE17-43F4-B2C8-E255984FC84B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B93452E5-AE17-43F4-B2C8-E255984FC84B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B93452E5-AE17-43F4-B2C8-E255984FC84B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B93452E5-AE17-43F4-B2C8-E255984FC84B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37487C34-AFF5-4686-8D21-3BE61E0C2E18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37487C34-AFF5-4686-8D21-3BE61E0C2E18}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37487C34-AFF5-4686-8D21-3BE61E0C2E18}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37487C34-AFF5-4686-8D21-3BE61E0C2E18}.Release|Any CPU.Build.0 = Release|Any CPU
+		{593EB38B-88ED-4AD5-B137-C6EFD7ABBB09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{593EB38B-88ED-4AD5-B137-C6EFD7ABBB09}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{593EB38B-88ED-4AD5-B137-C6EFD7ABBB09}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{593EB38B-88ED-4AD5-B137-C6EFD7ABBB09}.Release|Any CPU.Build.0 = Release|Any CPU
+		{691D7D77-B2A0-44D9-98F9-1B81C248697A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{691D7D77-B2A0-44D9-98F9-1B81C248697A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{691D7D77-B2A0-44D9-98F9-1B81C248697A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{691D7D77-B2A0-44D9-98F9-1B81C248697A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{37487C34-AFF5-4686-8D21-3BE61E0C2E18} = {4FA501B1-0058-4149-8BA1-4564D5858B0A}
+		{691D7D77-B2A0-44D9-98F9-1B81C248697A} = {3D7CA934-618A-476E-9220-F6B2B0790A56}
 	EndGlobalSection
 EndGlobal

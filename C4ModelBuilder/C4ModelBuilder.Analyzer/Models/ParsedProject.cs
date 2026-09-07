@@ -1,7 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace C4ModelBuilder.Analyzer;
+namespace C4ModelBuilder.Analyzer.Models;
 
 internal sealed record ParsedSolution(IReadOnlyCollection<ParsedProject> Projects)
 {
