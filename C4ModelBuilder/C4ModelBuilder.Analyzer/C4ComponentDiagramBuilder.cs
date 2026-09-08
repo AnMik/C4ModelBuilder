@@ -1,21 +1,21 @@
 using C4ModelBuilder.Analyzer.Models;
-using C4ModelBuilder.Models;
+using C4ModelBuilder.Models.Analysis;
 
 namespace C4ModelBuilder.Analyzer;
 
 /// <summary>
 /// Рекурсивно обходит MemberNode, собирает <see cref="C4Component"/> и <see cref="C4Relation"/>.
 /// </summary>
-internal static class PlantUmlContextBuilder
+internal static class C4ComponentDiagramBuilder
 {
     /// <summary>
     /// Обходит дерево <paramref name="root"/> и для каждого класса из MethodSignature формирует компонент,
     /// а для каждой пары (вызывающий → вызываемый) — связь.
     /// Компоненты и связи дедуплицируются.
     /// </summary>
-    public static PlantUmlC4ComponentDiagram Build(MemberNode root)
+    public static C4ComponentDiagram Build(MemberNode root)
     {
-        var components = new HashSet<(string Alias, string Name, string? Description, string? Technology)>();
+        var components = new HashSet<(string Alias, string Name, string Description)>();
         var relations = new HashSet<(string From, string To)>();
         var stack = new Stack<(string?, MemberNode)>();
 
@@ -37,7 +37,7 @@ internal static class PlantUmlContextBuilder
                 continue;
             }
 
-            AddComponent(components, currentClassName);
+            components.Add((currentClassName, currentClassName, Description: string.Empty));
 
             if (parentClassName != null && parentClassName != currentClassName)
             {
@@ -50,12 +50,12 @@ internal static class PlantUmlContextBuilder
             }
         }
 
-        return new PlantUmlC4ComponentDiagram(
+        return new C4ComponentDiagram(
             Components: components
-                .Select(x => new C4Component(x.Alias, x.Name, x.Description, x.Technology))
+                .Select(x => new C4Component(ComponentAlias: x.Alias, ComponentName: x.Name, Description: x.Description))
                 .ToList(),
             Relations: relations
-                .Select(x => new C4Relation(x.From, x.To))
+                .Select(x => new C4Relation(FromComponentAlias: x.From, ToComponentAlias: x.To, Description: string.Empty))
                 .ToList());
     }
 
@@ -63,13 +63,5 @@ internal static class PlantUmlContextBuilder
     {
         var dotIndex = methodSignature.IndexOf('.', StringComparison.Ordinal);
         return dotIndex > 0 ? methodSignature[..dotIndex] : null;
-    }
-
-    private static void AddComponent(
-        HashSet<(string Alias, string Name, string? Description, string? Technology)> components,
-        string className)
-    {
-        // Alias и DisplayName совпадают (не знаем настоящего имени без атрибутов)
-        components.Add((className, className, null, null));
     }
 }

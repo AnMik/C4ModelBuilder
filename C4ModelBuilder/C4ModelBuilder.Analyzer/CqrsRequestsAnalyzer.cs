@@ -5,10 +5,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
 
-internal static class CqrsAnalyzer
+internal static class CqrsRequestsAnalyzer
 {
-    public static IEnumerable<(string, ClassDeclarationSyntax, MethodDeclarationSyntax)> GetRequestHandlersMapping(
-        ParsedSolution parsedSolution)
+    public static IEnumerable<CqrsRequest> Analyze(ParsedSolution parsedSolution)
     {
         var cqrsRequestClasses = parsedSolution
             .Projects
@@ -33,7 +32,7 @@ internal static class CqrsAnalyzer
                     .FirstOrDefault(x => x.Identifier.Text == "HandleAsync")
                     ?? throw new InvalidOperationException("В cqrs хендлере не найден метод HandleAsync().");
 
-                yield return (cqrsRequestName, @class.ClassDeclarationSyntax, cqrsHandlerMethod);
+                yield return new CqrsRequest(cqrsRequestName, @class.ClassDeclarationSyntax, cqrsHandlerMethod);
                 break;
             }
         }

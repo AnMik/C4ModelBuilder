@@ -1,5 +1,6 @@
 ﻿using C4ModelBuilder.Analyzer.Models;
-using C4ModelBuilder.Models;
+using C4ModelBuilder.Models.Analysis;
+using C4ModelBuilder.Models.Attributes;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 
@@ -7,50 +8,51 @@ namespace C4ModelBuilder.Analyzer;
 
 public static class SolutionAnalyzer
 {
-    public static async Task<PlantUmlC4ComponentDiagram> Analyze(string solutionPath, int maxDepth = 15)
+    public static async Task<IReadOnlyCollection<C4ComponentDiagram>> AnalyzeComponents(string solutionPath, int maxDepth = 15)
     {
         using var workspace = MSBuildWorkspace.Create();
         var solution = await workspace.OpenSolutionAsync(solutionPath);
 
         var parsedSolution = await SolutionParser.Parse(solution);
-        var requestHandlersMapping = CqrsAnalyzer
-            .GetRequestHandlersMapping(parsedSolution)
-            .GroupBy(x => x.Item1, (x, y) => (x, y.First().Item2, y.First().Item3))
-            .ToDictionary(x => x.x, x => (x.Item2, x.Item3));
 
-        var componentAttributeName = nameof(C4ComponentAttribute)[..^(nameof(Attribute).Length)];
+        var requestHandlersMapping = CqrsRequestsAnalyzer
+            .Analyze(parsedSolution)
+            .GroupBy(
+                x => x.Name,
+                (x, items) => (x, RequestHandlerClass: items.First().HandlerClass, RequestHandlerMethod: items.First().HandlerMethod))
+            .ToDictionary(x => x.x, x => (x.Item2, x.Item3));
 
         var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth);
 
-        var memberNode = new MemberNode("Root");
+        var rootMemberNode = new MemberNode("Root");
 
-        foreach (var doc in parsedSolution.Projects.SelectMany(x => x.Classes))
+        foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
         {
-            var @class = doc.ClassDeclarationSyntax;
+            var classSyntax = @class.ClassDeclarationSyntax;
 
-            var mapiMethodsWithAttribute = @class
+            var methodSyntaxes = classSyntax
                 .Members
                 .OfType<MethodDeclarationSyntax>()
                 .Where(
                     method => method
                         .AttributeLists
-                        .SelectMany(attributeList => attributeList.Attributes)
-                        .Any(attribute => attribute.Name.ToString() == componentAttributeName));
+                        .SelectMany(x => x.Attributes)
+                        .Any(x => x.Name.ToString() == C4ComponentAttribute.Name));
 
-            foreach (var method in mapiMethodsWithAttribute)
+            foreach (var methodSyntax in methodSyntaxes)
             {
-                var node = await methodAnalyzer.AnalyzeMethod(@class, method, currentDepth: 0);
-                if (node != null)
+                var memberNode = await methodAnalyzer.AnalyzeMethod(classSyntax, methodSyntax, currentDepth: 0);
+                if (memberNode != null)
                 {
-                    memberNode.AddChild(node);
+                    rootMemberNode.AddChild(memberNode);
                 }
             }
         }
 
-        var plantUmlContext = PlantUmlContextBuilder.Build(memberNode);
+        MethodAnalyzer.WriteHierarchy(rootMemberNode);
 
-        MethodAnalyzer.WriteHierarchy(memberNode);
+        var plantUmlContext = C4ComponentDiagramBuilder.Build(rootMemberNode);
 
-        return plantUmlContext;
+        return [plantUmlContext];
     }
 }

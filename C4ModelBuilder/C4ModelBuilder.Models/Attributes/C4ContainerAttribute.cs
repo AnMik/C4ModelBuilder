@@ -1,4 +1,4 @@
-﻿namespace C4ModelBuilder.Models;
+﻿namespace C4ModelBuilder.Models.Attributes;
 
 /// <summary>
 /// Level 2

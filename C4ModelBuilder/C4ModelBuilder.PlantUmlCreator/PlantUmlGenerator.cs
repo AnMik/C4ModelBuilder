@@ -1,10 +1,10 @@
 using System.Text;
-using C4ModelBuilder.Models;
+using C4ModelBuilder.Models.Analysis;
 
 namespace C4ModelBuilder.PlantUmlCreator;
 
 /// <summary>
-/// Создаёт PlantUML-диаграмму C4 Component на основе <see cref="PlantUmlC4ComponentDiagram"/>.
+/// Создаёт PlantUML-диаграмму C4 Component на основе <see cref="C4ComponentDiagram"/>.
 /// </summary>
 public static class PlantUmlGenerator
 {
@@ -15,7 +15,7 @@ public static class PlantUmlGenerator
     /// </summary>
     /// <param name="ctx">Контекст с компонентами и связями.</param>
     /// <returns>Строка с PlantUML-диаграммой.</returns>
-    public static string Generate(PlantUmlC4ComponentDiagram ctx)
+    public static string Generate(C4ComponentDiagram ctx)
     {
         ArgumentNullException.ThrowIfNull(ctx);
         var sb = new StringBuilder();
@@ -29,11 +29,7 @@ public static class PlantUmlGenerator
 
         foreach (var component in ctx.Components)
         {
-            var description = component.Description ?? string.Empty;
-            sb.AppendLine(
-                component.Technology == null
-                    ? $"Component({component.ComponentAlias}, \"{component.ComponentName}\", \"{description}\")"
-                    : $"Component({component.ComponentAlias}, \"{component.ComponentName}\", \"{component.Technology}\", \"{description}\")");
+            sb.AppendLine($"Component({component.ComponentAlias}, \"{component.ComponentName}\", \"{component.Description}\")");
         }
 
         if (ctx.Components.Count > 0 && ctx.Relations.Count > 0)
@@ -43,11 +39,7 @@ public static class PlantUmlGenerator
 
         foreach (var relation in ctx.Relations)
         {
-            var label = relation.Description ?? string.Empty;
-            sb.AppendLine(
-                relation.Technology == null
-                    ? $"Rel({relation.FromComponentAlias}, {relation.ToComponentAlias}, \"{label}\")"
-                    : $"Rel({relation.FromComponentAlias}, {relation.ToComponentAlias}, \"{label}\", \"{relation.Technology}\")");
+            sb.AppendLine($"Rel({relation.FromComponentAlias}, {relation.ToComponentAlias}, \"{relation.Description}\")");
         }
 
         sb.AppendLine();

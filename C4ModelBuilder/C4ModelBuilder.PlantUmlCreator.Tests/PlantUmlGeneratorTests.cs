@@ -1,13 +1,14 @@
-using C4ModelBuilder.Models;
+using C4ModelBuilder.Models.Analysis;
 
 namespace C4ModelBuilder.PlantUmlCreator.Tests;
 
+[TestFixture]
 public class PlantUmlGeneratorTests
 {
     [Test]
     public void Generate_WithEmptyContext_ShouldReturnOnlyHeaderAndFooter()
     {
-        var ctx = new PlantUmlC4ComponentDiagram(Array.Empty<C4Component>(), Array.Empty<C4Relation>());
+        var ctx = new C4ComponentDiagram(Array.Empty<C4Component>(), Array.Empty<C4Relation>());
 
         var result = PlantUmlGenerator.Generate(ctx);
 
@@ -26,7 +27,7 @@ public class PlantUmlGeneratorTests
     [Test]
     public void Generate_WithSingleComponentNoRelations_ShouldProduceOneComponentNoRelations()
     {
-        var ctx = new PlantUmlC4ComponentDiagram(Components: [new C4Component("MyApp", "MyApp", null, null)], Array.Empty<C4Relation>());
+        var ctx = new C4ComponentDiagram(Components: [new C4Component("MyApp", "MyApp", string.Empty)], Array.Empty<C4Relation>());
 
         var result = PlantUmlGenerator.Generate(ctx);
 
@@ -38,15 +39,15 @@ public class PlantUmlGeneratorTests
     [Test]
     public void Generate_WithTwoComponentsAndOneRelation_ShouldProduceTwoComponentsOneRelation()
     {
-        var ctx = new PlantUmlC4ComponentDiagram(
+        var ctx = new C4ComponentDiagram(
             Components:
             [
-                new C4Component("ServiceA", "ServiceA", null, null),
-                new C4Component("ServiceB", "ServiceB", null, null),
+                new C4Component("ServiceA", "ServiceA", string.Empty),
+                new C4Component("ServiceB", "ServiceB", string.Empty),
             ],
             Relations:
             [
-                new C4Relation("ServiceA", "ServiceB"),
+                new C4Relation("ServiceA", "ServiceB", string.Empty),
             ]);
 
         var result = PlantUmlGenerator.Generate(ctx);
@@ -61,16 +62,16 @@ public class PlantUmlGeneratorTests
     [Test]
     public void Generate_WithDuplicateComponents_ShouldRenderAllComponents()
     {
-        var ctx = new PlantUmlC4ComponentDiagram(
+        var ctx = new C4ComponentDiagram(
             Components:
             [
-                new C4Component("A", "A", null, null),
-                new C4Component("A", "A", null, null),
-                new C4Component("B", "B", null, null),
+                new C4Component("A", "A", string.Empty),
+                new C4Component("A", "A", string.Empty),
+                new C4Component("B", "B", string.Empty),
             ],
             Relations:
             [
-                new C4Relation("A", "B"),
+                new C4Relation("A", "B", string.Empty),
             ]);
 
         var result = PlantUmlGenerator.Generate(ctx);
@@ -89,35 +90,35 @@ public class PlantUmlGeneratorTests
     [Test]
     public void Generate_WithComponentWithDescriptionAndTechnology_ShouldRenderCorrectMacro()
     {
-        var ctx = new PlantUmlC4ComponentDiagram(
+        var ctx = new C4ComponentDiagram(
             Components:
             [
-                new C4Component("ProductService", "Product Service", "Service for managing products", "C#"),
+                new C4Component("ProductService", "Product Service", "Service for managing products"),
             ],
             Array.Empty<C4Relation>());
 
         var result = PlantUmlGenerator.Generate(ctx);
 
-        Assert.That(result, Does.Contain("Component(ProductService, \"Product Service\", \"C#\", \"Service for managing products\")"));
+        Assert.That(result, Does.Contain("Component(ProductService, \"Product Service\", \"Service for managing products\")"));
     }
 
     [Test]
     public void Generate_WithRelationWithDescriptionAndTechnology_ShouldRenderCorrectMacro()
     {
-        var ctx = new PlantUmlC4ComponentDiagram(
+        var ctx = new C4ComponentDiagram(
             Components:
             [
-                new C4Component("A", "A", null, null),
-                new C4Component("B", "B", null, null),
+                new C4Component("A", "A", string.Empty),
+                new C4Component("B", "B", string.Empty),
             ],
             Relations:
             [
-                new C4Relation("A", "B", "calls", "HTTP"),
+                new C4Relation("A", "B", "calls"),
             ]);
 
         var result = PlantUmlGenerator.Generate(ctx);
 
-        Assert.That(result, Does.Contain("Rel(A, B, \"calls\", \"HTTP\")"));
+        Assert.That(result, Does.Contain("Rel(A, B, \"calls\")"));
     }
 
     private static int CountStringOccurrences(string text, string pattern)

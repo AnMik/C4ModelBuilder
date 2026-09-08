@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 
-namespace C4ModelBuilder.Analyzer;
+namespace C4ModelBuilder.Analyzer.Infrastructure;
 
 internal static class TypeComparer
 {
