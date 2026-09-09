@@ -14,18 +14,21 @@ internal sealed class MethodAnalyzer(
     public async Task<MemberNode?> AnalyzeMethod(
         ClassDeclarationSyntax classSyntax,
         MethodDeclarationSyntax methodSyntax,
-        int currentDepth)
+        int currentDepth,
+        CancellationToken cancellationToken = default)
     {
         if (currentDepth > maxDepth)
         {
             return null;
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         var node = new MemberNode(ToString(methodSyntax));
 
         foreach (var (subClassSyntax, subMethodSyntax) in GetInvokedMethods(classSyntax, methodSyntax))
         {
-            var childNode = await AnalyzeMethod(subClassSyntax, subMethodSyntax, currentDepth + 1);
+            var childNode = await AnalyzeMethod(subClassSyntax, subMethodSyntax, currentDepth + 1, cancellationToken);
             if (childNode != null)
             {
                 node.AddChild(childNode);

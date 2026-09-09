@@ -8,15 +8,20 @@ namespace C4ModelBuilder.Analyzer;
 
 public static class SolutionAnalyzer
 {
-    public static async Task<IReadOnlyCollection<C4ComponentDiagram>> AnalyzeComponents(string solutionPath, int maxDepth = 15)
+    public static async Task<IReadOnlyCollection<C4ComponentDiagram>> AnalyzeComponents(
+        string solutionPath,
+        int maxDepth = 15,
+        CancellationToken cancellationToken = default)
     {
-        using var workspace = MSBuildWorkspace.Create();
-        var solution = await workspace.OpenSolutionAsync(solutionPath);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var parsedSolution = await SolutionParser.Parse(solution);
+        using var workspace = MSBuildWorkspace.Create();
+        var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: cancellationToken);
+
+        var parsedSolution = await SolutionParser.Parse(solution, cancellationToken);
 
         var requestHandlersMapping = CqrsRequestsAnalyzer
-            .Analyze(parsedSolution)
+            .Analyze(parsedSolution, cancellationToken)
             .GroupBy(
                 x => x.Name,
                 (x, items) => (x, RequestHandlerClass: items.First().HandlerClass, RequestHandlerMethod: items.First().HandlerMethod))
@@ -28,6 +33,8 @@ public static class SolutionAnalyzer
 
         foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var classSyntax = @class.ClassDeclarationSyntax;
 
             var methodSyntaxes = classSyntax
@@ -41,7 +48,7 @@ public static class SolutionAnalyzer
 
             foreach (var methodSyntax in methodSyntaxes)
             {
-                var memberNode = await methodAnalyzer.AnalyzeMethod(classSyntax, methodSyntax, currentDepth: 0);
+                var memberNode = await methodAnalyzer.AnalyzeMethod(classSyntax, methodSyntax, currentDepth: 0, cancellationToken);
                 if (memberNode != null)
                 {
                     rootMemberNode.AddChild(memberNode);
@@ -51,7 +58,7 @@ public static class SolutionAnalyzer
 
         MethodAnalyzer.WriteHierarchy(rootMemberNode);
 
-        var plantUmlContext = C4ComponentDiagramBuilder.Build(rootMemberNode);
+        var plantUmlContext = C4ComponentDiagramBuilder.Build(rootMemberNode, cancellationToken);
 
         return [plantUmlContext];
     }

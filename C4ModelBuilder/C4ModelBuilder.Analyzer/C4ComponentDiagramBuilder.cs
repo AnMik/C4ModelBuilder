@@ -13,8 +13,10 @@ internal static class C4ComponentDiagramBuilder
     /// а для каждой пары (вызывающий → вызываемый) — связь.
     /// Компоненты и связи дедуплицируются.
     /// </summary>
-    public static C4ComponentDiagram Build(MemberNode root)
+    public static C4ComponentDiagram Build(MemberNode root, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(root);
+
         var components = new HashSet<(string Alias, string Name, string Description)>();
         var relations = new HashSet<(string From, string To)>();
         var stack = new Stack<(string?, MemberNode)>();
@@ -29,6 +31,8 @@ internal static class C4ComponentDiagramBuilder
 
         while (stack.Count > 0)
         {
+            ct.ThrowIfCancellationRequested();
+
             var (parentClassName, node) = stack.Pop();
             var currentClassName = ExtractClassName(node.MethodSignature);
 

@@ -7,7 +7,7 @@ namespace C4ModelBuilder.Analyzer;
 
 internal static class CqrsRequestsAnalyzer
 {
-    public static IEnumerable<CqrsRequest> Analyze(ParsedSolution parsedSolution)
+    public static IEnumerable<CqrsRequest> Analyze(ParsedSolution parsedSolution, CancellationToken ct = default)
     {
         var cqrsRequestClasses = parsedSolution
             .Projects
@@ -16,8 +16,12 @@ internal static class CqrsRequestsAnalyzer
 
         foreach (var cqrsRequestClass in cqrsRequestClasses)
         {
+            ct.ThrowIfCancellationRequested();
+
             foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
             {
+                ct.ThrowIfCancellationRequested();
+
                 var cqrsRequestName = cqrsRequestClass.ClassDeclarationSyntax.Identifier.Text;
 
                 if (@class.ClassDeclarationSyntax.BaseList?.Types.Any(

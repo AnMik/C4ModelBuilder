@@ -1,19 +1,54 @@
 using C4ModelBuilder.Analyzer;
 using C4ModelBuilder.PlantUmlCreator;
 
-// var solutionFilePath = "C:\\Repos\\kassa\\Afisha.Tickets.All.sln";
-var solutionDirectory = GetCurrentSolutionPath();
-var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
+Console.WriteLine("Started.");
 
-var componentDiagrams = await SolutionAnalyzer.AnalyzeComponents(solutionFilePath);
+using var cancellationTokenSource = new CancellationTokenSource();
 
-var i = 1;
-foreach (var componentDiagram in componentDiagrams)
+Console.CancelKeyPress += CancelTokenOnCancelKeyPress;
+
+try
 {
-    var diagram = PlantUmlGenerator.Generate(componentDiagram);
-    Console.WriteLine(diagram);
+    await Run(cancellationTokenSource);
+    Console.WriteLine("Finished.");
+}
+catch (TaskCanceledException)
+{
+    Console.WriteLine("Canceled.");
+}
 
-    await File.WriteAllTextAsync(Path.Combine(solutionDirectory.Parent!.FullName, "output", $"uml{i++}.puml"), diagram);
+return;
+
+async Task Run(CancellationTokenSource cts)
+{
+    // var solutionFilePath = "C:\\Repos\\kassa\\Afisha.Tickets.All.sln";
+    var solutionDirectory = GetCurrentSolutionPath();
+    var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
+
+    var componentDiagrams = await SolutionAnalyzer.AnalyzeComponents(solutionFilePath, maxDepth: 15, cts.Token);
+
+    var i = 1;
+    foreach (var componentDiagram in componentDiagrams)
+    {
+        var plantUml = PlantUmlGenerator.Generate(componentDiagram);
+
+        var path = Path.Combine(solutionDirectory.Parent!.FullName, "output", $"uml{i++}.puml");
+        await File.WriteAllTextAsync(path, plantUml);
+        Console.WriteLine(path);
+    }
+}
+
+void CancelTokenOnCancelKeyPress(object? _, ConsoleCancelEventArgs args)
+{
+    args.Cancel = true;
+    try
+    {
+        cancellationTokenSource.Cancel();
+    }
+    catch (ObjectDisposedException)
+    {
+        // ignore
+    }
 }
 
 static DirectoryInfo GetCurrentSolutionPath()
