@@ -8,8 +8,6 @@ namespace C4ModelBuilder.PlantUmlCreator;
 /// </summary>
 public static class PlantUmlGenerator
 {
-    private const string C4ComponentInclude = "https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml";
-
     /// <summary>
     /// Генерирует C4 Component PlantUML из готового контекста.
     /// </summary>
@@ -20,12 +18,11 @@ public static class PlantUmlGenerator
         ArgumentNullException.ThrowIfNull(ctx);
         var sb = new StringBuilder();
 
-        sb.AppendLine("@startuml");
-        sb.AppendLine();
-        sb.AppendLine($"!include {C4ComponentInclude}");
-        sb.AppendLine();
-        sb.AppendLine("LAYOUT_WITH_LEGEND()");
-        sb.AppendLine();
+        sb
+            .AppendLine("@startuml")
+            .AppendLine()
+            .AppendLine("!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml")
+            .AppendLine();
 
         foreach (var component in ctx.Components)
         {
@@ -42,8 +39,9 @@ public static class PlantUmlGenerator
             sb.AppendLine($"Rel({relation.FromComponentAlias}, {relation.ToComponentAlias}, \"{relation.Description}\")");
         }
 
-        sb.AppendLine();
-        sb.AppendLine("@enduml");
+        sb
+            .AppendLine()
+            .AppendLine("@enduml");
 
         return sb.ToString();
     }
