@@ -1,3 +1,4 @@
+using C4ModelBuilder.Models.Analysis;
 using Microsoft.Build.Locator;
 
 namespace C4ModelBuilder.Analyzer.Tests;
@@ -5,122 +6,123 @@ namespace C4ModelBuilder.Analyzer.Tests;
 [TestFixture]
 public class SolutionAnalyzerIntegrationTests
 {
-    private static string? _solutionPath;
+    private IReadOnlyCollection<C4ComponentDiagram>? _diagrams;
 
     [OneTimeSetUp]
-    public void OneTimeSetUp()
+    public async Task OneTimeSetUp()
     {
         RegisterMsBuild();
-        _solutionPath = GetCurrentSolutionPath();
+
+        _diagrams = await SolutionAnalyzer
+            .AnalyzeComponents(GetCurrentSolutionPath(), maxDepth: 15, CancellationToken.None)
+            .ToListAsync(CancellationToken.None);
     }
 
     [Test]
-    public async Task AnalyzeComponents_ReturnsOneDiagramPerRootClassWithExpectedGraph()
+    public void Home_controller_root_class_produces_expected_call_tree()
     {
-        var diagrams = await SolutionAnalyzer
-            .AnalyzeComponents(_solutionPath!, maxDepth: 15, CancellationToken.None)
-            .ToListAsync(CancellationToken.None);
+        Assert.That(_diagrams!.Count, Is.EqualTo(2));
 
-        Assert.That(diagrams, Is.Not.Null);
-        Assert.That(diagrams.Count, Is.EqualTo(2));
+        var home = DiagramByRootAlias("HomeController");
 
-        // Диаграмма для корневого класса HomeController.
-        var home = diagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));
-
-        CollectionAssert.AreEquivalent((string[])[
-            "HomeController", "UserApplication", "GetUsersHandler", "UserService", "UserRepository", "UserDataSource", "ISmsGateway",
-            "HomeController.GetUsersAsync", "UserApplication.GetUsersAsync", "GetUsersHandler.HandleAsync",
-            "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync"
-        ], home.Components.Select(component => component.ComponentAlias).ToHashSet());
-
-        var actual = home.Relations
-            .Select(relation => (relation.FromComponentAlias, relation.ToComponentAlias))
-            .ToHashSet();
-
-        CollectionAssert.AreEquivalent(((string From, string To)[])[
-            ("HomeController", "HomeController.GetUsersAsync"),
-            ("HomeController.GetUsersAsync", "UserApplication"),
-            ("UserApplication", "UserApplication.GetUsersAsync"),
-            ("UserApplication.GetUsersAsync", "UserService"),
-            ("UserService", "UserService.GetUsersAsync"),
-            ("UserService.GetUsersAsync", "UserRepository"),
-            ("UserRepository", "UserRepository.GetAll"),
-            ("UserRepository.GetAll", "UserDataSource"),
-            ("UserDataSource", "UserDataSource.FetchAll"),
-            ("HomeController.GetUsersAsync", "ISmsGateway"),
-            ("ISmsGateway", "ISmsGateway.SendAsync"),
-            ("HomeController.GetUsersAsync", "GetUsersHandler"),
-            ("GetUsersHandler", "GetUsersHandler.HandleAsync"),
-            ("GetUsersHandler.HandleAsync", "UserApplication")
-        ], actual);
+        AssertGraph(
+            home,
+            Edge("HomeController", "HomeController.GetUsersAsync"),
+            Edge("HomeController.GetUsersAsync", "UserApplication", "ISmsGateway", "GetUsersHandler"),
+            Edge("UserApplication", "UserApplication.GetUsersAsync"),
+            Edge("UserApplication.GetUsersAsync", "UserService"),
+            Edge("UserService", "UserService.GetUsersAsync"),
+            Edge("UserService.GetUsersAsync", "UserRepository"),
+            Edge("UserRepository", "UserRepository.GetAll"),
+            Edge("UserRepository.GetAll", "UserDataSource"),
+            Edge("UserDataSource", "UserDataSource.FetchAll"),
+            Edge("GetUsersHandler", "GetUsersHandler.HandleAsync"),
+            Edge("GetUsersHandler.HandleAsync", "UserApplication"),
+            Edge("ISmsGateway", "ISmsGateway.SendAsync"));
 
         Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
-        Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("Root"));
-        Assert.That(home.Relations.Select(relation => relation.FromComponentAlias), Does.Not.Contain("Root"));
+    }
 
-        // Диаграмма для корневого класса AdminController.
-        var admin = diagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "AdminController"));
+    [Test]
+    public void Admin_controller_root_class_produces_expected_call_tree()
+    {
+        var admin = DiagramByRootAlias("AdminController");
 
-        CollectionAssert.AreEquivalent((string[])[
-            "AdminController", "UserApplication", "UserService", "UserRepository", "UserDataSource", "ISmsGateway",
-            "AdminController.SendPromoAsync", "UserApplication.GetUsersAsync",
-            "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync"
-        ], admin.Components.Select(component => component.ComponentAlias).ToHashSet());
-
-        var actual1 = admin.Relations
-            .Select(relation => (relation.FromComponentAlias, relation.ToComponentAlias))
-            .ToHashSet();
-
-        CollectionAssert.AreEquivalent(((string From, string To)[])[
-            ("AdminController", "AdminController.SendPromoAsync"),
-            ("AdminController.SendPromoAsync", "UserApplication"),
-            ("UserApplication", "UserApplication.GetUsersAsync"),
-            ("UserApplication.GetUsersAsync", "UserService"),
-            ("UserService", "UserService.GetUsersAsync"),
-            ("UserService.GetUsersAsync", "UserRepository"),
-            ("UserRepository", "UserRepository.GetAll"),
-            ("UserRepository.GetAll", "UserDataSource"),
-            ("UserDataSource", "UserDataSource.FetchAll"),
-            ("AdminController.SendPromoAsync", "ISmsGateway"),
-            ("ISmsGateway", "ISmsGateway.SendAsync")
-        ], actual1);
+        AssertGraph(
+            admin,
+            Edge("AdminController", "AdminController.SendPromoAsync"),
+            Edge("AdminController.SendPromoAsync", "UserApplication", "ISmsGateway"),
+            Edge("UserApplication", "UserApplication.GetUsersAsync"),
+            Edge("UserApplication.GetUsersAsync", "UserService"),
+            Edge("UserService", "UserService.GetUsersAsync"),
+            Edge("UserService.GetUsersAsync", "UserRepository"),
+            Edge("UserRepository", "UserRepository.GetAll"),
+            Edge("UserRepository.GetAll", "UserDataSource"),
+            Edge("UserDataSource", "UserDataSource.FetchAll"),
+            Edge("ISmsGateway", "ISmsGateway.SendAsync"));
 
         Assert.That(admin.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
     }
 
     [Test]
-    public async Task AnalyzeComponents_MaxDepthOne_TruncatesDeepestRelation()
+    public async Task Analysis_depth_limits_how_deep_a_call_tree_is_expanded()
     {
-        var diagrams = await SolutionAnalyzer
-            .AnalyzeComponents(_solutionPath!, maxDepth: 1, CancellationToken.None)
+        var shallowDiagrams = await SolutionAnalyzer
+            .AnalyzeComponents(GetCurrentSolutionPath(), maxDepth: 1, CancellationToken.None)
             .ToListAsync(CancellationToken.None);
 
-        Assert.That(diagrams.Count, Is.EqualTo(2));
+        var home = shallowDiagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));
+        var componentAliases = home.Components.Select(component => component.ComponentAlias).ToHashSet();
 
-        var home = diagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));
-        var componentAliases = home.Components
-            .Select(component => component.ComponentAlias)
-            .ToHashSet();
+        Assert.That(componentAliases, Is.SupersetOf(new[]
+            {
+                "HomeController", "HomeController.GetUsersAsync",
+                "UserApplication", "UserApplication.GetUsersAsync",
+                "GetUsersHandler", "GetUsersHandler.HandleAsync",
+                "ISmsGateway",
+            }));
 
-        Assert.That(componentAliases, Does.Contain("HomeController"));
-        Assert.That(componentAliases, Does.Contain("HomeController.GetUsersAsync"));
-        Assert.That(componentAliases, Does.Contain("UserApplication"));
-        Assert.That(componentAliases, Does.Contain("UserApplication.GetUsersAsync"));
-        Assert.That(componentAliases, Does.Contain("GetUsersHandler"));
-        Assert.That(componentAliases, Does.Contain("GetUsersHandler.HandleAsync"));
-        Assert.That(componentAliases, Does.Contain("ISmsGateway"));
-
-        Assert.That(componentAliases, Does.Not.Contain("UserService"));
-        Assert.That(componentAliases, Does.Not.Contain("UserService.GetUsersAsync"));
-        Assert.That(componentAliases, Does.Not.Contain("UserRepository"));
-        Assert.That(componentAliases, Does.Not.Contain("UserRepository.GetAll"));
-        Assert.That(componentAliases, Does.Not.Contain("UserDataSource"));
-        Assert.That(componentAliases, Does.Not.Contain("UserDataSource.FetchAll"));
+        Assert.That(componentAliases.Intersect(
+            [
+                "UserService", "UserService.GetUsersAsync",
+                "UserRepository", "UserRepository.GetAll",
+                "UserDataSource", "UserDataSource.FetchAll",
+            ]), Is.Empty);
     }
 
-    /// <summary>
-    /// MSBuildWorkspace (используется внутри SolutionAnalyzer) требует зарегистрированный MSBuild.
-    /// </summary>
+
+    private C4ComponentDiagram DiagramByRootAlias(string rootAlias)
+        => _diagrams!.Single(
+            diagram => diagram.Components.Any(component => component.ComponentAlias == rootAlias));
+
+    private static GraphEdge Edge(string from, params string[] to) => new(from, to);
+
+    private static void AssertGraph(C4ComponentDiagram diagram, params GraphEdge[] edges)
+    {
+        var expectedNodes = new HashSet<string>();
+        var expectedRelations = new HashSet<(string From, string To)>();
+
+        foreach (var edge in edges)
+        {
+            expectedNodes.Add(edge.From);
+            foreach (var to in edge.To)
+            {
+                expectedNodes.Add(to);
+                expectedRelations.Add((edge.From, to));
+            }
+        }
+
+        var actualNodes = diagram.Components.Select(component => component.ComponentAlias).ToHashSet();
+        var actualRelations = diagram.Relations
+            .Select(relation => (relation.FromComponentAlias, relation.ToComponentAlias))
+            .ToHashSet();
+
+        CollectionAssert.AreEquivalent(expectedNodes, actualNodes);
+        CollectionAssert.AreEquivalent(expectedRelations, actualRelations);
+    }
+
+    private sealed record GraphEdge(string From, params string[] To);
+
     private static void RegisterMsBuild()
     {
         try
@@ -152,4 +154,3 @@ public class SolutionAnalyzerIntegrationTests
         throw new DirectoryNotFoundException("Каталог решения C4ModelBuilder.sln не найден.");
     }
 }
-

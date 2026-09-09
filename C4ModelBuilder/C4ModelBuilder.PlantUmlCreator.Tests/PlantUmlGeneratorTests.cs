@@ -6,7 +6,7 @@ namespace C4ModelBuilder.PlantUmlCreator.Tests;
 public class PlantUmlGeneratorTests
 {
     [Test]
-    public void Generate_WithEmptyContext_ShouldReturnOnlyHeaderAndFooter()
+    public void Generator_returns_only_header_and_footer_when_context_is_empty()
     {
         var ctx = new C4ComponentDiagram(Array.Empty<C4Component>(), Array.Empty<C4Relation>());
 
@@ -19,13 +19,13 @@ public class PlantUmlGeneratorTests
     }
 
     [Test]
-    public void Generate_WithNullContext_ShouldThrowException()
+    public void Generator_throws_when_context_is_null()
     {
         Assert.Throws<ArgumentNullException>(() => PlantUmlGenerator.Generate(null!));
     }
 
     [Test]
-    public void Generate_WithSingleComponentNoRelations_ShouldProduceOneComponentNoRelations()
+    public void Generator_renders_single_component_without_relations()
     {
         var ctx = new C4ComponentDiagram(Components: [new C4Component("MyApp", "MyApp", string.Empty)], Array.Empty<C4Relation>());
 
@@ -37,7 +37,7 @@ public class PlantUmlGeneratorTests
     }
 
     [Test]
-    public void Generate_WithTwoComponentsAndOneRelation_ShouldProduceTwoComponentsOneRelation()
+    public void Generator_renders_two_components_and_one_relation()
     {
         var ctx = new C4ComponentDiagram(
             Components:
@@ -60,7 +60,7 @@ public class PlantUmlGeneratorTests
     }
 
     [Test]
-    public void Generate_WithDuplicateComponents_ShouldRenderAllComponents()
+    public void Generator_renders_duplicate_components_as_they_are()
     {
         var ctx = new C4ComponentDiagram(
             Components:
@@ -88,7 +88,7 @@ public class PlantUmlGeneratorTests
     }
 
     [Test]
-    public void Generate_WithComponentWithDescriptionAndTechnology_ShouldRenderCorrectMacro()
+    public void Generator_renders_component_macro_with_description_and_technology()
     {
         var ctx = new C4ComponentDiagram(
             Components:
@@ -103,7 +103,7 @@ public class PlantUmlGeneratorTests
     }
 
     [Test]
-    public void Generate_WithRelationWithDescriptionAndTechnology_ShouldRenderCorrectMacro()
+    public void Generator_renders_relation_macro_with_description_and_technology()
     {
         var ctx = new C4ComponentDiagram(
             Components:
