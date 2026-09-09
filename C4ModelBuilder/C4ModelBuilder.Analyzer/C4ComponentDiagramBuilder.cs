@@ -9,8 +9,8 @@ namespace C4ModelBuilder.Analyzer;
 internal static class C4ComponentDiagramBuilder
 {
     /// <summary>
-    /// Обходит дерево вызовов <paramref name="root"/> и делает узлом каждый компонент: и тип (класс/интерфейс),
-    /// и метод. Каждое ребро родитель → ребёнок становится связью. Узлы и связи дедуплицируются.
+    /// Обходит дерево вызовов <paramref name="root"/> и делает узлом каждый компонент: корень и каждый узел
+    /// (тип/класс/интерфейс или метод). Каждое ребро родитель → ребёнок становится связью. Узлы и связи дедуплицируются.
     /// </summary>
     public static C4ComponentDiagram Build(MemberNode root, CancellationToken ct = default)
     {
@@ -18,19 +18,15 @@ internal static class C4ComponentDiagramBuilder
 
         var components = new HashSet<string>();
         var relations = new HashSet<(string From, string To)>();
-        var stack = new Stack<(string?, MemberNode)>();
+        var stack = new Stack<MemberNode>();
 
-        // Корневые дети добавляются без родителя (Root на диаграмму не попадает).
-        foreach (var topLevelChild in root.Children)
-        {
-            stack.Push((null, topLevelChild));
-        }
+        stack.Push(root);
 
         while (stack.Count > 0)
         {
             ct.ThrowIfCancellationRequested();
 
-            var (parentSignature, node) = stack.Pop();
+            var node = stack.Pop();
             var signature = node.MethodSignature;
 
             if (string.IsNullOrEmpty(signature))
@@ -40,14 +36,10 @@ internal static class C4ComponentDiagramBuilder
 
             components.Add(signature);
 
-            if (parentSignature != null && parentSignature != signature)
-            {
-                relations.Add((parentSignature, signature));
-            }
-
             foreach (var child in node.Children)
             {
-                stack.Push((signature, child));
+                relations.Add((signature, child.MethodSignature));
+                stack.Push(child);
             }
         }
 

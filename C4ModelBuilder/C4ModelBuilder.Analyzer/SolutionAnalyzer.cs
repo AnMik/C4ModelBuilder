@@ -12,7 +12,7 @@ public static class SolutionAnalyzer
 {
     public static async Task<IReadOnlyCollection<C4ComponentDiagram>> AnalyzeComponents(
         string solutionPath,
-        int maxDepth = 15,
+        int maxDepth,
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
@@ -25,17 +25,19 @@ public static class SolutionAnalyzer
         var requestHandlersMapping = CqrsRequestsAnalyzer
             .Analyze(parsedSolution, ct)
             .GroupBy(
-                x => x.Name,
-                (x, items) => (x, RequestHandlerClass: items.First().HandlerClass, RequestHandlerMethod: items.First().HandlerMethod))
-            .ToDictionary(x => x.x, x => (x.Item2, x.Item3));
+                cqrsRequest => cqrsRequest.Name,
+                (name, cqrsRequests) =>
+                {
+                    var firstHandler = cqrsRequests.First();
+                    return (RequestName: name,
+                            RequestHandlerClass: firstHandler.HandlerClass,
+                            RequestHandlerMethod: firstHandler.HandlerMethod);
+                })
+            .ToDictionary(x => x.RequestName, x => (x.RequestHandlerClass, x.RequestHandlerMethod));
 
         var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth);
 
-        var rootClasses = parsedSolution
-            .Projects
-            .SelectMany(x => x.Classes)
-            .Where(IsRootClass)
-            .ToList();
+        var rootClasses = parsedSolution.Projects.SelectMany(x => x.Classes).Where(IsRootClass);
 
         var diagrams = new List<C4ComponentDiagram>();
 
@@ -60,11 +62,9 @@ public static class SolutionAnalyzer
                 }
             }
 
-            var treeRoot = new MemberNode("Root");
-            treeRoot.AddChild(classNode);
+            MemberNodeVisualizer.WriteToConsole(classNode);
 
-            MemberNodeVisualizer.WriteToConsole(treeRoot);
-            diagrams.Add(C4ComponentDiagramBuilder.Build(treeRoot, ct));
+            diagrams.Add(C4ComponentDiagramBuilder.Build(classNode, ct));
         }
 
         return diagrams;

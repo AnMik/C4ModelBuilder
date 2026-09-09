@@ -10,7 +10,6 @@ public class SolutionAnalyzerIntegrationTests
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
-        // MSBuildWorkspace (используется внутри SolutionAnalyzer) требует зарегистрированный MSBuild.
         RegisterMsBuild();
         _solutionPath = GetCurrentSolutionPath();
     }
@@ -18,7 +17,7 @@ public class SolutionAnalyzerIntegrationTests
     [Test]
     public async Task AnalyzeComponents_ReturnsOneDiagramPerRootClassWithExpectedGraph()
     {
-        var diagrams = await SolutionAnalyzer.AnalyzeComponents(_solutionPath!);
+        var diagrams = await SolutionAnalyzer.AnalyzeComponents(_solutionPath!, maxDepth: 10);
 
         Assert.That(diagrams, Is.Not.Null);
         Assert.That(diagrams.Count, Is.EqualTo(2));
@@ -28,17 +27,15 @@ public class SolutionAnalyzerIntegrationTests
 
         AssertComponents(
             home,
-            new[]
-            {
+            [
                 "HomeController", "UserApplication", "GetUsersHandler", "UserService", "UserRepository", "UserDataSource", "ISmsGateway",
                 "HomeController.GetUsersAsync", "UserApplication.GetUsersAsync", "GetUsersHandler.HandleAsync",
-                "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync",
-            });
+                "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync"
+            ]);
 
         AssertRelations(
             home,
-            new[]
-            {
+            [
                 ("HomeController", "HomeController.GetUsersAsync"),
                 ("HomeController.GetUsersAsync", "UserApplication"),
                 ("UserApplication", "UserApplication.GetUsersAsync"),
@@ -52,27 +49,27 @@ public class SolutionAnalyzerIntegrationTests
                 ("ISmsGateway", "ISmsGateway.SendAsync"),
                 ("HomeController.GetUsersAsync", "GetUsersHandler"),
                 ("GetUsersHandler", "GetUsersHandler.HandleAsync"),
-                ("GetUsersHandler.HandleAsync", "UserApplication"),
-            });
+                ("GetUsersHandler.HandleAsync", "UserApplication")
+            ]);
 
         Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
+        Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("Root"));
+        Assert.That(home.Relations.Select(relation => relation.FromComponentAlias), Does.Not.Contain("Root"));
 
         // Диаграмма для корневого класса AdminController.
         var admin = diagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "AdminController"));
 
         AssertComponents(
             admin,
-            new[]
-            {
+            [
                 "AdminController", "UserApplication", "UserService", "UserRepository", "UserDataSource", "ISmsGateway",
                 "AdminController.SendPromoAsync", "UserApplication.GetUsersAsync",
-                "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync",
-            });
+                "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync"
+            ]);
 
         AssertRelations(
             admin,
-            new[]
-            {
+            [
                 ("AdminController", "AdminController.SendPromoAsync"),
                 ("AdminController.SendPromoAsync", "UserApplication"),
                 ("UserApplication", "UserApplication.GetUsersAsync"),
@@ -83,8 +80,8 @@ public class SolutionAnalyzerIntegrationTests
                 ("UserRepository.GetAll", "UserDataSource"),
                 ("UserDataSource", "UserDataSource.FetchAll"),
                 ("AdminController.SendPromoAsync", "ISmsGateway"),
-                ("ISmsGateway", "ISmsGateway.SendAsync"),
-            });
+                ("ISmsGateway", "ISmsGateway.SendAsync")
+            ]);
 
         Assert.That(admin.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
     }
@@ -129,6 +126,9 @@ public class SolutionAnalyzerIntegrationTests
         CollectionAssert.AreEquivalent(expected, actual);
     }
 
+    /// <summary>
+    /// MSBuildWorkspace (используется внутри SolutionAnalyzer) требует зарегистрированный MSBuild.
+    /// </summary>
     private static void RegisterMsBuild()
     {
         try

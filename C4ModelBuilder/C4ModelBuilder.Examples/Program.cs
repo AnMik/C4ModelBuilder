@@ -1,22 +1,23 @@
+using System.Diagnostics;
 using C4ModelBuilder.Analyzer;
 using C4ModelBuilder.PlantUmlCreator;
 
 Console.WriteLine("Started.");
-
+var sw = new Stopwatch();
 using var cancellationTokenSource = new CancellationTokenSource();
-
 Console.CancelKeyPress += (_, eventArgs) => CancelToken(eventArgs, cancellationTokenSource);
 
 try
 {
     await Run(cancellationTokenSource);
-    Console.WriteLine("Finished.");
 }
 catch (TaskCanceledException)
 {
     Console.WriteLine("Canceled.");
+    return;
 }
 
+Console.WriteLine($"Finished ({sw.Elapsed.TotalSeconds}s).");
 return;
 
 async Task Run(CancellationTokenSource cts)
