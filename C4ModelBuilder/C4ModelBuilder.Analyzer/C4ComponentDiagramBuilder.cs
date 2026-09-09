@@ -9,21 +9,18 @@ namespace C4ModelBuilder.Analyzer;
 internal static class C4ComponentDiagramBuilder
 {
     /// <summary>
-    /// Обходит дерево <paramref name="root"/> и для каждого класса из MethodSignature формирует компонент,
-    /// а для каждой пары (вызывающий → вызываемый) — связь.
-    /// Компоненты и связи дедуплицируются.
+    /// Обходит дерево вызовов <paramref name="root"/> и делает узлом каждый компонент: и тип (класс/интерфейс),
+    /// и метод. Каждое ребро родитель → ребёнок становится связью. Узлы и связи дедуплицируются.
     /// </summary>
     public static C4ComponentDiagram Build(MemberNode root, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(root);
 
-        var components = new HashSet<(string Alias, string Name, string Description)>();
+        var components = new HashSet<string>();
         var relations = new HashSet<(string From, string To)>();
         var stack = new Stack<(string?, MemberNode)>();
 
-        // Начинаем с кортежа (null, root).
-        // При рождении компонента передаётся ClassName текущего метода,
-        // который будет использован для связи From в дочерних узлах.
+        // Корневые дети добавляются без родителя (Root на диаграмму не попадает).
         foreach (var topLevelChild in root.Children)
         {
             stack.Push((null, topLevelChild));
@@ -33,39 +30,33 @@ internal static class C4ComponentDiagramBuilder
         {
             ct.ThrowIfCancellationRequested();
 
-            var (parentClassName, node) = stack.Pop();
-            var currentClassName = ExtractClassName(node.MethodSignature);
+            var (parentSignature, node) = stack.Pop();
+            var signature = node.MethodSignature;
 
-            if (currentClassName == null)
+            if (string.IsNullOrEmpty(signature))
             {
                 continue;
             }
 
-            components.Add((currentClassName, currentClassName, Description: string.Empty));
+            components.Add(signature);
 
-            if (parentClassName != null && parentClassName != currentClassName)
+            if (parentSignature != null && parentSignature != signature)
             {
-                relations.Add((parentClassName, currentClassName));
+                relations.Add((parentSignature, signature));
             }
 
             foreach (var child in node.Children)
             {
-                stack.Push((currentClassName, child));
+                stack.Push((signature, child));
             }
         }
 
         return new C4ComponentDiagram(
             Components: components
-                .Select(x => new C4Component(ComponentAlias: x.Alias, ComponentName: x.Name, Description: x.Description))
+                .Select(signature => new C4Component(ComponentAlias: signature, ComponentName: signature, Description: string.Empty))
                 .ToList(),
             Relations: relations
-                .Select(x => new C4Relation(FromComponentAlias: x.From, ToComponentAlias: x.To, Description: string.Empty))
+                .Select(relation => new C4Relation(FromComponentAlias: relation.From, ToComponentAlias: relation.To, Description: string.Empty))
                 .ToList());
-    }
-
-    private static string? ExtractClassName(string methodSignature)
-    {
-        var dotIndex = methodSignature.IndexOf('.', StringComparison.Ordinal);
-        return dotIndex > 0 ? methodSignature[..dotIndex] : null;
     }
 }

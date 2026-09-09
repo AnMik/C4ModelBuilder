@@ -51,7 +51,9 @@ public static class SolutionAnalyzer
                 var memberNode = await methodAnalyzer.AnalyzeMethod(classSyntax, methodSyntax, currentDepth: 0, cancellationToken);
                 if (memberNode != null)
                 {
-                    rootMemberNode.AddChild(memberNode);
+                    var classNode = new MemberNode(classSyntax.Identifier.Text);
+                    classNode.AddChild(memberNode);
+                    rootMemberNode.AddChild(classNode);
                 }
             }
         }

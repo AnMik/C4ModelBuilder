@@ -15,30 +15,54 @@ internal sealed class MethodAnalyzer(
         ClassDeclarationSyntax classSyntax,
         MethodDeclarationSyntax methodSyntax,
         int currentDepth,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         if (currentDepth > maxDepth)
         {
             return null;
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
 
-        var node = new MemberNode(ToString(methodSyntax));
+        var node = new MemberNode(MethodName(classSyntax, methodSyntax));
 
-        foreach (var (subClassSyntax, subMethodSyntax) in GetInvokedMethods(classSyntax, methodSyntax))
+        foreach (var invoked in GetInvokedMethods(classSyntax, methodSyntax))
         {
-            var childNode = await AnalyzeMethod(subClassSyntax, subMethodSyntax, currentDepth + 1, cancellationToken);
-            if (childNode != null)
+            ct.ThrowIfCancellationRequested();
+
+            var typeNode = new MemberNode(invoked.TypeName);
+
+            var methodChild = invoked is { ClassSyntax: not null, MethodSyntax: not null }
+                ? await AnalyzeMethod(invoked.ClassSyntax, invoked.MethodSyntax, currentDepth + 1, ct)
+                : new MemberNode($"{invoked.TypeName}.{invoked.MethodName}");
+
+            if (methodChild != null)
             {
-                node.AddChild(childNode);
+                typeNode.AddChild(methodChild);
+                node.AddChild(typeNode);
             }
         }
 
         return node;
     }
 
-    private IEnumerable<(ClassDeclarationSyntax, MethodDeclarationSyntax)> GetInvokedMethods(
+    /// <summary>
+    /// Разрешённый вызов: внутренний метод класса (ClassSyntax/MethodSyntax заданы, можно рекурсивно
+    /// анализировать тело) либо внешний метод интерфейса без имплементации (MethodSyntax == null, лист).
+    /// </summary>
+    private sealed record InvokedMethod(
+        string TypeName,
+        ClassDeclarationSyntax? ClassSyntax,
+        MethodDeclarationSyntax? MethodSyntax,
+        string MethodName);
+
+    private static string MethodName(ClassDeclarationSyntax classSyntax, MethodDeclarationSyntax methodSyntax)
+        => $"{classSyntax.Identifier.Text}.{methodSyntax.Identifier.Text}";
+
+    private static InvokedMethod FromSyntax(ClassDeclarationSyntax classSyntax, MethodDeclarationSyntax methodSyntax)
+        => new(classSyntax.Identifier.Text, classSyntax, methodSyntax, methodSyntax.Identifier.Text);
+
+    private IEnumerable<InvokedMethod> GetInvokedMethods(
         ClassDeclarationSyntax classSyntax,
         MethodDeclarationSyntax methodSyntax)
     {
@@ -103,7 +127,7 @@ internal sealed class MethodAnalyzer(
 
                 if (cqrsHandlersMapping.TryGetValue(queryName, out var handlerTypedSymbol))
                 {
-                    yield return handlerTypedSymbol;
+                    yield return FromSyntax(handlerTypedSymbol.Item1, handlerTypedSymbol.Item2);
                 }
                 else
                 {
@@ -121,11 +145,16 @@ internal sealed class MethodAnalyzer(
                               FieldType: (methodSemanticModel.GetDeclaredSymbol(x) as IFieldSymbol)?.Type as INamedTypeSymbol))
                     .Where(
                         x => x.FieldType is
-                        {
-                            TypeKind: TypeKind.Interface or TypeKind.Class,
-                            MetadataToken: 0,
-                            Name: not "IMapper" and not "ITaggableCache"
-                        })
+                            {
+                                TypeKind: TypeKind.Class,
+                                MetadataToken: 0,
+                                Name: not "IMapper" and not "ITaggableCache"
+                            }
+                            or
+                            {
+                                TypeKind: TypeKind.Interface,
+                                Name: not "IMapper" and not "ITaggableCache"
+                            })
                     .ToDictionary(x => x.FieldName, x => x.FieldType!);
 
                 var fieldName = methodInvocation
@@ -152,7 +181,7 @@ internal sealed class MethodAnalyzer(
 
                     if (methodDeclarationSyntax != null)
                     {
-                        yield return (classSyntax, methodDeclarationSyntax);
+                        yield return FromSyntax(classSyntax, methodDeclarationSyntax);
                     }
                 }
                 else
@@ -176,7 +205,15 @@ internal sealed class MethodAnalyzer(
 
                             if (implementingClassSyntax == null)
                             {
-                                continue;
+                                // Имплементация интерфейса не найдена в солюшене (например, внешняя библиотека):
+                                // добавляем узел-интерфейс и его метод как лист.
+                                var externalMethodName =
+                                    (methodSemanticModel.GetSymbolInfo(methodInvocation).Symbol as IMethodSymbol)?.Name
+                                    ?? string.Empty;
+
+                                yield return new InvokedMethod(fieldTypeSymbol.Name, null, null, externalMethodName);
+
+                                break;
                             }
 
                             var methodSymbol = methodSemanticModel.FindMethodImplementation(implementingClassSyntax, methodInvocation);
@@ -190,7 +227,7 @@ internal sealed class MethodAnalyzer(
 
                             if (invokedMethodSyntax != null)
                             {
-                                yield return invokedMethodSyntax.Value;
+                                yield return FromSyntax(invokedMethodSyntax.Value.Item1, invokedMethodSyntax.Value.Item2);
                             }
 
                             break;
@@ -205,7 +242,7 @@ internal sealed class MethodAnalyzer(
                                 ?? throw new InvalidOperationException(
                                     $"Не найден метод {methodSemanticModel} в классе {fieldTypeSymbol.ToDisplayString()}.");
 
-                            yield return invokedMethodSyntax;
+                            yield return FromSyntax(invokedMethodSyntax.Item1, invokedMethodSyntax.Item2);
 
                             break;
                         }
@@ -215,14 +252,6 @@ internal sealed class MethodAnalyzer(
                 }
             }
         }
-    }
-
-    private static string ToString(MethodDeclarationSyntax method)
-    {
-        var className = method.Ancestors().OfType<ClassDeclarationSyntax>().FirstOrDefault()?.Identifier.Text;
-        var parameterTypes = method.ParameterList.Parameters.Where(x => x.Type != null).Select(x => x.Type!.ToFullString().Trim());
-
-        return $"{className}.{method.Identifier.Text}({string.Join(",", parameterTypes)})";
     }
 
     private static string GetTabs(int count) => $"{Enumerable.Repeat("   ", count).JoinStrings(string.Empty)}\u2514\u2500\u2500";
