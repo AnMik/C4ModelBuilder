@@ -1,4 +1,5 @@
-﻿using C4ModelBuilder.Analyzer.Models;
+﻿using System.Runtime.CompilerServices;
+using C4ModelBuilder.Analyzer.Models;
 using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.Models.Attributes;
 using Microsoft.CodeAnalysis;
@@ -10,10 +11,10 @@ namespace C4ModelBuilder.Analyzer;
 
 public static class SolutionAnalyzer
 {
-    public static async Task<IReadOnlyCollection<C4ComponentDiagram>> AnalyzeComponents(
+    public static async IAsyncEnumerable<C4ComponentDiagram> AnalyzeComponents(
         string solutionPath,
         int maxDepth,
-        CancellationToken ct = default)
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -39,8 +40,6 @@ public static class SolutionAnalyzer
 
         var rootClasses = parsedSolution.Projects.SelectMany(x => x.Classes).Where(IsRootClass);
 
-        var diagrams = new List<C4ComponentDiagram>();
-
         foreach (var rootClass in rootClasses)
         {
             ct.ThrowIfCancellationRequested();
@@ -64,10 +63,8 @@ public static class SolutionAnalyzer
 
             MemberNodeVisualizer.WriteToConsole(classNode);
 
-            diagrams.Add(C4ComponentDiagramBuilder.Build(classNode, ct));
+            yield return C4ComponentDiagramBuilder.Build(classNode, ct);
         }
-
-        return diagrams;
     }
 
     private static bool IsRootClass(ParsedProject.Class @class)

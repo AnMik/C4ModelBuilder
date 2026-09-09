@@ -26,10 +26,10 @@ async Task Run(CancellationTokenSource cts)
     var solutionDirectory = GetCurrentSolutionPath();
     var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
 
-    var componentDiagrams = await SolutionAnalyzer.AnalyzeComponents(solutionFilePath, maxDepth: 15, cts.Token);
+    var componentDiagrams = SolutionAnalyzer.AnalyzeComponents(solutionFilePath, maxDepth: 15, cts.Token);
 
     var i = 1;
-    foreach (var componentDiagram in componentDiagrams)
+    await foreach (var componentDiagram in componentDiagrams)
     {
         var plantUml = PlantUmlGenerator.Generate(componentDiagram);
 
