@@ -30,7 +30,7 @@ public class SolutionAnalyzerIntegrationTests
             .ToHashSet();
 
         CollectionAssert.AreEquivalent(
-            new[] { "HomeController", "GetUsersHandler", "UserService", "UserRepository" },
+            new[] { "HomeController", "UserApplication", "GetUsersHandler", "UserService", "UserRepository", "UserDataSource" },
             componentAliases);
 
         var relations = diagram.Relations
@@ -40,10 +40,12 @@ public class SolutionAnalyzerIntegrationTests
         CollectionAssert.AreEquivalent(
             new[]
             {
+                ("HomeController", "UserApplication"),
                 ("HomeController", "GetUsersHandler"),
-                ("HomeController", "UserService"),
-                ("GetUsersHandler", "UserService"),
+                ("GetUsersHandler", "UserApplication"),
+                ("UserApplication", "UserService"),
                 ("UserService", "UserRepository"),
+                ("UserRepository", "UserDataSource"),
             },
             relations);
     }
@@ -59,9 +61,11 @@ public class SolutionAnalyzerIntegrationTests
             .ToHashSet();
 
         Assert.That(componentAliases, Does.Contain("HomeController"));
+        Assert.That(componentAliases, Does.Contain("UserApplication"));
         Assert.That(componentAliases, Does.Contain("GetUsersHandler"));
-        Assert.That(componentAliases, Does.Contain("UserService"));
+        Assert.That(componentAliases, Does.Not.Contain("UserService"));
         Assert.That(componentAliases, Does.Not.Contain("UserRepository"));
+        Assert.That(componentAliases, Does.Not.Contain("UserDataSource"));
     }
 
     private static void RegisterMsBuild()

@@ -7,20 +7,20 @@ namespace C4ModelBuilder.Examples.Sample
     public sealed class HomeController
     {
         private readonly Rds.Cqrs.Queries.IQueryService _queryService;
-        private readonly IUserService _userService;
+        private readonly IUserApplication _userApplication;
 
         public HomeController(
             Rds.Cqrs.Queries.IQueryService queryService,
-            IUserService userService)
+            IUserApplication userApplication)
         {
             _queryService = queryService;
-            _userService = userService;
+            _userApplication = userApplication;
         }
 
         [C4Component]
         public async Task GetUsersAsync(CancellationToken ct)
         {
-            var users = await _userService.GetUsersAsync(ct);
+            var users = await _userApplication.GetUsersAsync(ct);
             await _queryService.Ask(new GetUsers(), ct);
 
             System.GC.KeepAlive(users);
