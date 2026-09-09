@@ -1,6 +1,8 @@
 ﻿using C4ModelBuilder.Analyzer.Models;
 using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.Models.Attributes;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 
@@ -29,39 +31,72 @@ public static class SolutionAnalyzer
 
         var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth);
 
-        var rootMemberNode = new MemberNode("Root");
+        var rootClasses = parsedSolution
+            .Projects
+            .SelectMany(x => x.Classes)
+            .Where(IsRootClass)
+            .ToList();
 
-        foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
+        var diagrams = new List<C4ComponentDiagram>();
+
+        foreach (var rootClass in rootClasses)
         {
             ct.ThrowIfCancellationRequested();
 
-            var classSyntax = @class.ClassDeclarationSyntax;
+            var classSyntax = rootClass.ClassDeclarationSyntax;
+            var classNode = new MemberNode(classSyntax.Identifier.Text);
 
-            var methodSyntaxes = classSyntax
+            var publicMethods = classSyntax
                 .Members
                 .OfType<MethodDeclarationSyntax>()
-                .Where(
-                    method => method
-                        .AttributeLists
-                        .SelectMany(x => x.Attributes)
-                        .Any(x => x.Name.ToString() == C4ComponentAttribute.Name));
+                .Where(method => method.Modifiers.Any(SyntaxKind.PublicKeyword));
 
-            foreach (var methodSyntax in methodSyntaxes)
+            foreach (var publicMethod in publicMethods)
             {
-                var memberNode = await methodAnalyzer.AnalyzeMethod(classSyntax, methodSyntax, currentDepth: 0, ct);
-                if (memberNode != null)
+                var methodNode = await methodAnalyzer.AnalyzeMethod(classSyntax, publicMethod, currentDepth: 0, ct);
+                if (methodNode != null)
                 {
-                    var classNode = new MemberNode(classSyntax.Identifier.Text);
-                    classNode.AddChild(memberNode);
-                    rootMemberNode.AddChild(classNode);
+                    classNode.AddChild(methodNode);
                 }
+            }
+
+            var treeRoot = new MemberNode("Root");
+            treeRoot.AddChild(classNode);
+
+            MemberNodeVisualizer.WriteToConsole(treeRoot);
+            diagrams.Add(C4ComponentDiagramBuilder.Build(treeRoot, ct));
+        }
+
+        return diagrams;
+    }
+
+    private static bool IsRootClass(ParsedProject.Class @class)
+    {
+        var symbol = @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax);
+        var attribute = symbol?.GetAttributes()
+            .FirstOrDefault(attribute => attribute.AttributeClass?.Name == nameof(C4ComponentAttribute));
+
+        if (attribute == null)
+        {
+            return false;
+        }
+
+        foreach (var argument in attribute.ConstructorArguments)
+        {
+            if (argument.Value is true)
+            {
+                return true;
             }
         }
 
-        MemberNodeVisualizer.WriteToConsole(rootMemberNode);
+        foreach (var namedArgument in attribute.NamedArguments)
+        {
+            if (namedArgument.Key is "isRoot" or "IsRoot" && namedArgument.Value.Value is true)
+            {
+                return true;
+            }
+        }
 
-        var plantUmlContext = C4ComponentDiagramBuilder.Build(rootMemberNode, ct);
-
-        return [plantUmlContext];
+        return false;
     }
 }

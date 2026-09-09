@@ -16,33 +16,27 @@ public class SolutionAnalyzerIntegrationTests
     }
 
     [Test]
-    public async Task AnalyzeComponents_OnRepositorySolution_ReturnsSingleDiagramWithExpectedGraph()
+    public async Task AnalyzeComponents_ReturnsOneDiagramPerRootClassWithExpectedGraph()
     {
         var diagrams = await SolutionAnalyzer.AnalyzeComponents(_solutionPath!);
 
         Assert.That(diagrams, Is.Not.Null);
-        Assert.That(diagrams.Count, Is.EqualTo(1));
+        Assert.That(diagrams.Count, Is.EqualTo(2));
 
-        var diagram = diagrams.Single();
+        // Диаграмма для корневого класса HomeController.
+        var home = diagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));
 
-        var componentAliases = diagram.Components
-            .Select(component => component.ComponentAlias)
-            .ToHashSet();
-
-        CollectionAssert.AreEquivalent(
+        AssertComponents(
+            home,
             new[]
             {
                 "HomeController", "UserApplication", "GetUsersHandler", "UserService", "UserRepository", "UserDataSource", "ISmsGateway",
                 "HomeController.GetUsersAsync", "UserApplication.GetUsersAsync", "GetUsersHandler.HandleAsync",
                 "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync",
-            },
-            componentAliases);
+            });
 
-        var relations = diagram.Relations
-            .Select(relation => (relation.FromComponentAlias, relation.ToComponentAlias))
-            .ToHashSet();
-
-        CollectionAssert.AreEquivalent(
+        AssertRelations(
+            home,
             new[]
             {
                 ("HomeController", "HomeController.GetUsersAsync"),
@@ -59,8 +53,40 @@ public class SolutionAnalyzerIntegrationTests
                 ("HomeController.GetUsersAsync", "GetUsersHandler"),
                 ("GetUsersHandler", "GetUsersHandler.HandleAsync"),
                 ("GetUsersHandler.HandleAsync", "UserApplication"),
-            },
-            relations);
+            });
+
+        Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
+
+        // Диаграмма для корневого класса AdminController.
+        var admin = diagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "AdminController"));
+
+        AssertComponents(
+            admin,
+            new[]
+            {
+                "AdminController", "UserApplication", "UserService", "UserRepository", "UserDataSource", "ISmsGateway",
+                "AdminController.SendPromoAsync", "UserApplication.GetUsersAsync",
+                "UserService.GetUsersAsync", "UserRepository.GetAll", "UserDataSource.FetchAll", "ISmsGateway.SendAsync",
+            });
+
+        AssertRelations(
+            admin,
+            new[]
+            {
+                ("AdminController", "AdminController.SendPromoAsync"),
+                ("AdminController.SendPromoAsync", "UserApplication"),
+                ("UserApplication", "UserApplication.GetUsersAsync"),
+                ("UserApplication.GetUsersAsync", "UserService"),
+                ("UserService", "UserService.GetUsersAsync"),
+                ("UserService.GetUsersAsync", "UserRepository"),
+                ("UserRepository", "UserRepository.GetAll"),
+                ("UserRepository.GetAll", "UserDataSource"),
+                ("UserDataSource", "UserDataSource.FetchAll"),
+                ("AdminController.SendPromoAsync", "ISmsGateway"),
+                ("ISmsGateway", "ISmsGateway.SendAsync"),
+            });
+
+        Assert.That(admin.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
     }
 
     [Test]
@@ -68,22 +94,39 @@ public class SolutionAnalyzerIntegrationTests
     {
         var diagrams = await SolutionAnalyzer.AnalyzeComponents(_solutionPath!, maxDepth: 1);
 
-        var componentAliases = diagrams.Single()
-            .Components
+        Assert.That(diagrams.Count, Is.EqualTo(2));
+
+        var home = diagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));
+        var componentAliases = home.Components
             .Select(component => component.ComponentAlias)
             .ToHashSet();
 
         Assert.That(componentAliases, Does.Contain("HomeController"));
         Assert.That(componentAliases, Does.Contain("HomeController.GetUsersAsync"));
         Assert.That(componentAliases, Does.Contain("UserApplication"));
+        Assert.That(componentAliases, Does.Contain("UserApplication.GetUsersAsync"));
         Assert.That(componentAliases, Does.Contain("GetUsersHandler"));
+        Assert.That(componentAliases, Does.Contain("GetUsersHandler.HandleAsync"));
         Assert.That(componentAliases, Does.Contain("ISmsGateway"));
 
         Assert.That(componentAliases, Does.Not.Contain("UserService"));
+        Assert.That(componentAliases, Does.Not.Contain("UserService.GetUsersAsync"));
         Assert.That(componentAliases, Does.Not.Contain("UserRepository"));
-        Assert.That(componentAliases, Does.Not.Contain("UserDataSource"));
         Assert.That(componentAliases, Does.Not.Contain("UserRepository.GetAll"));
+        Assert.That(componentAliases, Does.Not.Contain("UserDataSource"));
         Assert.That(componentAliases, Does.Not.Contain("UserDataSource.FetchAll"));
+    }
+
+    private static void AssertComponents(C4ModelBuilder.Models.Analysis.C4ComponentDiagram diagram, string[] expected)
+        => CollectionAssert.AreEquivalent(expected, diagram.Components.Select(component => component.ComponentAlias).ToHashSet());
+
+    private static void AssertRelations(C4ModelBuilder.Models.Analysis.C4ComponentDiagram diagram, (string From, string To)[] expected)
+    {
+        var actual = diagram.Relations
+            .Select(relation => (relation.FromComponentAlias, relation.ToComponentAlias))
+            .ToHashSet();
+
+        CollectionAssert.AreEquivalent(expected, actual);
     }
 
     private static void RegisterMsBuild()
