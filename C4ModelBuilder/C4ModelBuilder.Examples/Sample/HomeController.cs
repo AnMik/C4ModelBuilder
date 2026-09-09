@@ -4,7 +4,7 @@ using C4ModelBuilder.Models.Attributes;
 
 namespace C4ModelBuilder.Examples.Sample
 {
-    [C4Component(true)]
+    [C4Component(IsRoot = true)]
     public sealed class HomeController
     {
         private readonly Rds.Cqrs.Queries.IQueryService _queryService;

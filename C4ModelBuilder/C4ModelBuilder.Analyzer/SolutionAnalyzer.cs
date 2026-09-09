@@ -73,27 +73,12 @@ public static class SolutionAnalyzer
         var attribute = symbol?.GetAttributes()
             .FirstOrDefault(attribute => attribute.AttributeClass?.Name == nameof(C4ComponentAttribute));
 
-        if (attribute == null)
+        if (attribute is null)
         {
             return false;
         }
 
-        foreach (var argument in attribute.ConstructorArguments)
-        {
-            if (argument.Value is true)
-            {
-                return true;
-            }
-        }
-
-        foreach (var namedArgument in attribute.NamedArguments)
-        {
-            if (namedArgument.Key is "isRoot" or "IsRoot" && namedArgument.Value.Value is true)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return attribute.NamedArguments.Any(
+            argument => argument.Key == nameof(C4ComponentAttribute.IsRoot) && argument.Value.Value is true);
     }
 }

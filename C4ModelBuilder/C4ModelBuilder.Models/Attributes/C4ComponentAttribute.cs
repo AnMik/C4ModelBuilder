@@ -4,9 +4,9 @@
 /// Level 3
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Method)]
-public sealed class C4ComponentAttribute(bool isRoot = false, string description = "") : Attribute
+public sealed class C4ComponentAttribute : Attribute
 {
-    public bool IsRoot { get; } = isRoot;
+    public bool IsRoot { get; set; }
 
-    public string Description { get; } = description;
+    public string? Description { get; set; }
 }
