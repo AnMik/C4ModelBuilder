@@ -23,8 +23,8 @@ public static class SolutionAnalyzer
 
         var parsedSolution = await SolutionParser.Parse(solution, ct);
 
-        var requestHandlersMapping = CqrsRequestsAnalyzer
-            .Analyze(parsedSolution, ct)
+        var requestHandlersMapping = RdsCqrsRequestsFinder
+            .Find(parsedSolution, ct)
             .GroupBy(
                 cqrsRequest => cqrsRequest.Name,
                 (name, cqrsRequests) =>
