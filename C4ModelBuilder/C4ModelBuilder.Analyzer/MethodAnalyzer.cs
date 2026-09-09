@@ -17,19 +17,17 @@ internal sealed class MethodAnalyzer(
         int currentDepth,
         CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         if (currentDepth > maxDepth)
         {
             return null;
         }
 
-        ct.ThrowIfCancellationRequested();
-
         var node = new MemberNode(MethodName(classSyntax, methodSyntax));
 
         foreach (var invoked in GetInvokedMethods(classSyntax, methodSyntax))
         {
-            ct.ThrowIfCancellationRequested();
-
             var typeNode = new MemberNode(invoked.TypeName);
 
             var methodChild = invoked is { ClassSyntax: not null, MethodSyntax: not null }
@@ -251,27 +249,6 @@ internal sealed class MethodAnalyzer(
                     }
                 }
             }
-        }
-    }
-
-    private static string GetTabs(int count) => $"{Enumerable.Repeat("   ", count).JoinStrings(string.Empty)}\u2514\u2500\u2500";
-
-    private static void WriteWithTab(int depth, string text) => Console.WriteLine($"{GetTabs(depth)}{text}");
-
-    public static void WriteHierarchy(MemberNode node, int depth = 0)
-    {
-        ArgumentNullException.ThrowIfNull(node);
-        WriteWithTab(depth, node.MethodSignature);
-
-        if (node.Children.Count == 0)
-        {
-            WriteWithTab(depth + 1, "<Empty>");
-            return;
-        }
-
-        foreach (var child in node.Children)
-        {
-            WriteHierarchy(child, depth + 1);
         }
     }
 }

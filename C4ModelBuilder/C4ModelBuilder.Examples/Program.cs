@@ -5,7 +5,7 @@ Console.WriteLine("Started.");
 
 using var cancellationTokenSource = new CancellationTokenSource();
 
-Console.CancelKeyPress += CancelTokenOnCancelKeyPress;
+Console.CancelKeyPress += (_, eventArgs) => CancelToken(eventArgs, cancellationTokenSource);
 
 try
 {
@@ -38,12 +38,12 @@ async Task Run(CancellationTokenSource cts)
     }
 }
 
-void CancelTokenOnCancelKeyPress(object? _, ConsoleCancelEventArgs args)
+void CancelToken(ConsoleCancelEventArgs args, CancellationTokenSource cts)
 {
     args.Cancel = true;
     try
     {
-        cancellationTokenSource.Cancel();
+        cts.Cancel();
     }
     catch (ObjectDisposedException)
     {

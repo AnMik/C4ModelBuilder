@@ -11,17 +11,17 @@ public static class SolutionAnalyzer
     public static async Task<IReadOnlyCollection<C4ComponentDiagram>> AnalyzeComponents(
         string solutionPath,
         int maxDepth = 15,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
 
         using var workspace = MSBuildWorkspace.Create();
-        var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: cancellationToken);
+        var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: ct);
 
-        var parsedSolution = await SolutionParser.Parse(solution, cancellationToken);
+        var parsedSolution = await SolutionParser.Parse(solution, ct);
 
         var requestHandlersMapping = CqrsRequestsAnalyzer
-            .Analyze(parsedSolution, cancellationToken)
+            .Analyze(parsedSolution, ct)
             .GroupBy(
                 x => x.Name,
                 (x, items) => (x, RequestHandlerClass: items.First().HandlerClass, RequestHandlerMethod: items.First().HandlerMethod))
@@ -33,7 +33,7 @@ public static class SolutionAnalyzer
 
         foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ct.ThrowIfCancellationRequested();
 
             var classSyntax = @class.ClassDeclarationSyntax;
 
@@ -48,7 +48,7 @@ public static class SolutionAnalyzer
 
             foreach (var methodSyntax in methodSyntaxes)
             {
-                var memberNode = await methodAnalyzer.AnalyzeMethod(classSyntax, methodSyntax, currentDepth: 0, cancellationToken);
+                var memberNode = await methodAnalyzer.AnalyzeMethod(classSyntax, methodSyntax, currentDepth: 0, ct);
                 if (memberNode != null)
                 {
                     var classNode = new MemberNode(classSyntax.Identifier.Text);
@@ -58,9 +58,9 @@ public static class SolutionAnalyzer
             }
         }
 
-        MethodAnalyzer.WriteHierarchy(rootMemberNode);
+        MemberNodeVisualizer.WriteToConsole(rootMemberNode);
 
-        var plantUmlContext = C4ComponentDiagramBuilder.Build(rootMemberNode, cancellationToken);
+        var plantUmlContext = C4ComponentDiagramBuilder.Build(rootMemberNode, ct);
 
         return [plantUmlContext];
     }
