@@ -22,18 +22,18 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
         var node = new MemberNode(classMethod.Name);
 
-        foreach (var invoked in GetInvokedMethods(classMethod))
+        foreach (var invokedMethod in GetInvokedMethods(classMethod))
         {
-            var typeNode = new MemberNode(invoked.ClassName);
+            var memberNode = new MemberNode(invokedMethod.ClassName);
 
-            var methodChild = invoked.ClassMethod != null
-                ? await AnalyzeMethod(invoked.ClassMethod, currentDepth + 1, ct)
-                : new MemberNode($"{invoked.ClassName}.{invoked.MethodName}");
+            var methodChild = invokedMethod.ClassMethod != null
+                ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)
+                : new MemberNode($"{invokedMethod.ClassName}.{invokedMethod.MethodName}");
 
             if (methodChild != null)
             {
-                typeNode.AddChild(methodChild);
-                node.AddChild(typeNode);
+                memberNode.AddChild(methodChild);
+                node.AddChild(memberNode);
             }
         }
 

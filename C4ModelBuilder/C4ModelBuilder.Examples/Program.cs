@@ -27,8 +27,8 @@ async Task Run(CancellationTokenSource cts)
     var solutionDirectory = GetCurrentSolutionPath();
     var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
 
-    var analyzer = new SolutionAnalyzer(solutionFilePath, maxDepth: 15);
-    var componentDiagrams = analyzer.AnalyzeComponents(cts.Token);
+    var solutionAnalyzer = await SolutionAnalyzer.Create(solutionFilePath, maxDepth: 15, cts.Token);
+    var componentDiagrams = solutionAnalyzer.AnalyzeComponents(cts.Token);
 
     var i = 1;
     await foreach (var componentDiagram in componentDiagrams)

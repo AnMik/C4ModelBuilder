@@ -13,7 +13,7 @@ public class SolutionAnalyzerIntegrationTests
     {
         RegisterMsBuild();
 
-        var analyzer = new SolutionAnalyzer(GetCurrentSolutionPath(), maxDepth: 15);
+        var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 15, CancellationToken.None);
 
         _diagrams = await analyzer
             .AnalyzeComponents(CancellationToken.None)
@@ -69,7 +69,9 @@ public class SolutionAnalyzerIntegrationTests
     [Test]
     public async Task Analysis_depth_limits_how_deep_a_call_tree_is_expanded()
     {
-        var shallowDiagrams = await new SolutionAnalyzer(GetCurrentSolutionPath(), maxDepth: 1)
+        var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 1, CancellationToken.None);
+
+        var shallowDiagrams = await analyzer
             .AnalyzeComponents(CancellationToken.None)
             .ToListAsync(CancellationToken.None);
 

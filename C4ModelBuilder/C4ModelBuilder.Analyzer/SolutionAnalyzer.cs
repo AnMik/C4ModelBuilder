@@ -9,27 +9,40 @@ using Microsoft.CodeAnalysis.MSBuild;
 
 namespace C4ModelBuilder.Analyzer;
 
-public sealed class SolutionAnalyzer(string solutionPath, int maxDepth)
+public sealed class SolutionAnalyzer
 {
-    public async IAsyncEnumerable<C4ComponentDiagram> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
+    private readonly ParsedSolution _parsedSolution;
+    private readonly MethodAnalyzer _methodAnalyzer;
+
+    private SolutionAnalyzer(ParsedSolution parsedSolution, MethodAnalyzer methodAnalyzer)
+    {
+        _parsedSolution = parsedSolution;
+        _methodAnalyzer = methodAnalyzer;
+    }
+
+    public static async Task<SolutionAnalyzer> Create(string solutionPath, int maxDepth, CancellationToken ct = default)
     {
         using var workspace = MSBuildWorkspace.Create();
         var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: ct);
 
         var parsedSolution = await SolutionParser.Parse(solution, ct);
+        var rdsCqrsRequests = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, ct);
+        var methodAnalyzer = new MethodAnalyzer(parsedSolution, rdsCqrsRequests, maxDepth);
 
-        var requestHandlersMapping = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, ct);
+        return new SolutionAnalyzer(parsedSolution, methodAnalyzer);
+    }
 
-        var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth);
+    public async IAsyncEnumerable<C4ComponentDiagram> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var rootComponentClassSyntaxes = _parsedSolution
+            .Projects
+            .SelectMany(x => x.Classes)
+            .Where(IsRootComponent)
+            .Select(x => x.ClassDeclarationSyntax);
 
-        var rootClasses = parsedSolution.Projects.SelectMany(x => x.Classes).Where(IsRootClass);
-
-        foreach (var rootClass in rootClasses)
+        foreach (var classSyntax in rootComponentClassSyntaxes)
         {
-            ct.ThrowIfCancellationRequested();
-
-            var classSyntax = rootClass.ClassDeclarationSyntax;
-            var classNode = new MemberNode(classSyntax.Identifier.Text);
+            var rootMemberNode = new MemberNode(classSyntax.Identifier.Text);
 
             var publicMethods = classSyntax
                 .Members
@@ -38,31 +51,25 @@ public sealed class SolutionAnalyzer(string solutionPath, int maxDepth)
 
             foreach (var publicMethod in publicMethods)
             {
-                var methodNode = await methodAnalyzer.AnalyzeMethod(new ClassMethod(classSyntax, publicMethod), currentDepth: 0, ct);
+                var methodNode = await _methodAnalyzer.AnalyzeMethod(new ClassMethod(classSyntax, publicMethod), currentDepth: 0, ct);
                 if (methodNode != null)
                 {
-                    classNode.AddChild(methodNode);
+                    rootMemberNode.AddChild(methodNode);
                 }
             }
 
-            MemberNodeVisualizer.WriteToConsole(classNode);
+            MemberNodeVisualizer.WriteToConsole(rootMemberNode);
 
-            yield return C4ComponentDiagramBuilder.Build(classNode, ct);
+            yield return C4ComponentDiagramBuilder.Build(rootMemberNode, ct);
         }
     }
 
-    private static bool IsRootClass(ParsedSolution.Project.Class @class)
-    {
-        var symbol = @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax);
-        var attribute = symbol?.GetAttributes()
-            .FirstOrDefault(attribute => attribute.AttributeClass?.Name == nameof(C4ComponentAttribute));
-
-        if (attribute is null)
-        {
-            return false;
-        }
-
-        return attribute.NamedArguments.Any(
-            argument => argument.Key == nameof(C4ComponentAttribute.IsRoot) && argument.Value.Value is true);
-    }
+    private static bool IsRootComponent(ParsedSolution.Project.Class @class)
+        => @class
+                .SemanticModel
+                .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
+                ?.GetAttributes()
+                .FirstOrDefault(attribute => attribute.AttributeClass?.Name == nameof(C4ComponentAttribute))
+                ?.NamedArguments.Any(argument => argument is { Key: nameof(C4ComponentAttribute.IsRoot), Value.Value: true })
+            == true;
 }
