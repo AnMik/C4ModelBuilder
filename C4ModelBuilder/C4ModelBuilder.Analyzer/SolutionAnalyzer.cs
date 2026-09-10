@@ -42,7 +42,7 @@ public sealed class SolutionAnalyzer
 
         foreach (var classSyntax in rootComponentClassSyntaxes)
         {
-            var rootNode = new InvocationTree(classSyntax.Identifier.Text, isComponent: true);
+            var rootNode = new InvocationTree(classSyntax.Identifier.Text, isC4Component: true);
 
             var publicMethods = classSyntax
                 .Members
@@ -56,7 +56,7 @@ public sealed class SolutionAnalyzer
 
                 if (invokedMethodNode != null)
                 {
-                    rootNode.AddChild(invokedMethodNode);
+                    rootNode.AddInvocation(invokedMethodNode);
                 }
             }
 

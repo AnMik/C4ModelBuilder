@@ -23,22 +23,22 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
         var methodSemanticModel = parsedSolution.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree);
         var methodSymbol = methodSemanticModel.GetDeclaredSymbol(classMethod.MethodSyntax);
 
-        var currentMethodNode = new InvocationTree(classMethod.Name, isComponent: methodSymbol.HasC4ComponentAttribute());
+        var currentMethodNode = new InvocationTree(classMethod.Name, isC4Component: methodSymbol.HasC4ComponentAttribute());
 
         foreach (var invokedMethod in GetInvokedMethods(classMethod, methodSemanticModel))
         {
-            var invokedClassNode = new InvocationTree(invokedMethod.ClassName, isComponent: invokedMethod.IsClassComponent);
+            var invokedClassNode = new InvocationTree(invokedMethod.ClassName, isC4Component: invokedMethod.IsClassComponent);
 
             var invokedMethodNode = invokedMethod.ClassMethod != null
                 ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)
                 : new InvocationTree(
                     $"{invokedMethod.ClassName}.{invokedMethod.MethodName}",
-                    isComponent: invokedMethod.IsMethodComponent);
+                    isC4Component: invokedMethod.IsMethodComponent);
 
             if (invokedMethodNode != null)
             {
-                invokedClassNode.AddChild(invokedMethodNode);
-                currentMethodNode.AddChild(invokedClassNode);
+                invokedClassNode.AddInvocation(invokedMethodNode);
+                currentMethodNode.AddInvocation(invokedClassNode);
             }
         }
 

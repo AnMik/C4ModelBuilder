@@ -9,128 +9,120 @@ namespace C4ModelBuilder.Analyzer.Tests;
 public class C4ComponentDiagramBuilderTests
 {
     [Test]
-    public void RootClass_and_each_of_its_public_methods_are_separate_components()
+    public void Only_component_nodes_become_components()
     {
-        var root = new InvocationTree("HomeController");
-        root.AddChild(new InvocationTree("HomeController.GetUsersAsync"));
-        root.AddChild(new InvocationTree("HomeController.SendAsync"));
+        var root = new InvocationTree("HomeController", isC4Component: true);
+        root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", isC4Component: false));          // метод без флага
+        root.AddInvocation(new InvocationTree("HomeController.SendAsync", isC4Component: true)); // метод-компонент
 
         var diagram = C4ComponentDiagramBuilder.Build(root);
 
-        AssertComponents(
-            diagram,
-            "HomeController",
-            "HomeController.GetUsersAsync",
-            "HomeController.SendAsync");
-
-        AssertRelations(
-            diagram,
-            ("HomeController", "HomeController.GetUsersAsync"),
-            ("HomeController", "HomeController.SendAsync"));
+        AssertComponents(diagram, "HomeController", "HomeController.SendAsync");
     }
 
     [Test]
-    public void Parent_child_edges_become_relations_along_type_method_chain()
+    public void Non_component_nodes_are_collapsed_into_relations_between_components()
     {
-        var root = new InvocationTree("HomeController");
-        var method = new InvocationTree("HomeController.GetUsersAsync");
-        var applicationType = new InvocationTree("UserApplication");
-        applicationType.AddChild(new InvocationTree("UserApplication.GetUsersAsync"));
-        method.AddChild(applicationType);
-        root.AddChild(method);
+        var root = new InvocationTree("HomeController", isC4Component: true);
+        var method = new InvocationTree("HomeController.GetUsersAsync", isC4Component: false);           // метод без флага
+        var userApp = new InvocationTree("UserApplication", isC4Component: true);
+        var innerMethod = new InvocationTree("UserApplication.GetUsersAsync", isC4Component: false);      // метод без флага
+        var userService = new InvocationTree("UserService", isC4Component: true);
+        innerMethod.AddInvocation(userService);
+        userApp.AddInvocation(innerMethod);
+        method.AddInvocation(userApp);
+        root.AddInvocation(method);
 
         var diagram = C4ComponentDiagramBuilder.Build(root);
 
-        AssertComponents(
-            diagram,
-            "HomeController",
-            "HomeController.GetUsersAsync",
-            "UserApplication",
-            "UserApplication.GetUsersAsync");
-
+        AssertComponents(diagram, "HomeController", "UserApplication", "UserService");
         AssertRelations(
             diagram,
-            ("HomeController", "HomeController.GetUsersAsync"),
-            ("HomeController.GetUsersAsync", "UserApplication"),
-            ("UserApplication", "UserApplication.GetUsersAsync"));
+            ("HomeController", "UserApplication"),
+            ("UserApplication", "UserService"));
     }
 
     [Test]
-    public void Method_calling_several_types_fans_out_into_several_edges()
+    public void Method_calling_several_components_fans_out_into_several_relations()
     {
-        var root = new InvocationTree("HomeController");
-        var method = new InvocationTree("HomeController.GetUsersAsync");
+        var root = new InvocationTree("HomeController", isC4Component: true);
+        var method = new InvocationTree("HomeController.GetUsersAsync", isC4Component: false);
 
-        var applicationType = new InvocationTree("UserApplication");
-        applicationType.AddChild(new InvocationTree("UserApplication.GetUsersAsync"));
+        var userApp = new InvocationTree("UserApplication", isC4Component: true);
+        userApp.AddInvocation(new InvocationTree("UserApplication.GetUsersAsync", isC4Component: false));
 
-        var smsGatewayType = new InvocationTree("ISmsGateway");
-        smsGatewayType.AddChild(new InvocationTree("ISmsGateway.SendAsync"));
+        var smsGateway = new InvocationTree("ISmsGateway", isC4Component: true);
+        smsGateway.AddInvocation(new InvocationTree("ISmsGateway.SendAsync", isC4Component: false));
 
-        method.AddChild(applicationType);
-        method.AddChild(smsGatewayType);
-        root.AddChild(method);
+        method.AddInvocation(userApp);
+        method.AddInvocation(smsGateway);
+        root.AddInvocation(method);
 
         var diagram = C4ComponentDiagramBuilder.Build(root);
 
         AssertRelations(
             diagram,
-            ("HomeController", "HomeController.GetUsersAsync"),
-            ("HomeController.GetUsersAsync", "UserApplication"),
-            ("HomeController.GetUsersAsync", "ISmsGateway"),
-            ("UserApplication", "UserApplication.GetUsersAsync"),
-            ("ISmsGateway", "ISmsGateway.SendAsync"));
+            ("HomeController", "UserApplication"),
+            ("HomeController", "ISmsGateway"));
     }
 
     [Test]
-    public void Interface_without_implementation_is_added_with_its_leaf_method()
+    public void Interface_without_implementation_is_added_as_component()
     {
-        var root = new InvocationTree("HomeController");
-        var method = new InvocationTree("HomeController.GetUsersAsync");
+        var root = new InvocationTree("HomeController", isC4Component: true);
+        var method = new InvocationTree("HomeController.GetUsersAsync", isC4Component: false);
 
-        var gatewayType = new InvocationTree("ISmsGateway");
-        gatewayType.AddChild(new InvocationTree("ISmsGateway.SendAsync"));
+        var smsGateway = new InvocationTree("ISmsGateway", isC4Component: true);
+        smsGateway.AddInvocation(new InvocationTree("ISmsGateway.SendAsync", isC4Component: false));
 
-        method.AddChild(gatewayType);
-        root.AddChild(method);
+        method.AddInvocation(smsGateway);
+        root.AddInvocation(method);
 
         var diagram = C4ComponentDiagramBuilder.Build(root);
 
-        AssertComponents(
-            diagram,
-            "HomeController",
-            "HomeController.GetUsersAsync",
-            "ISmsGateway",
-            "ISmsGateway.SendAsync");
+        AssertComponents(diagram, "HomeController", "ISmsGateway");
     }
 
     [Test]
     public void Duplicate_nodes_and_relations_are_deduplicated()
     {
-        var root = new InvocationTree("HomeController");
-        root.AddChild(new InvocationTree("HomeController.GetUsersAsync"));
-        root.AddChild(new InvocationTree("HomeController.GetUsersAsync"));
+        var root = new InvocationTree("HomeController", isC4Component: true);
+        root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", isC4Component: false));
+        root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", isC4Component: false));
 
         var diagram = C4ComponentDiagramBuilder.Build(root);
 
-        AssertComponents(diagram, "HomeController", "HomeController.GetUsersAsync");
-        AssertRelations(diagram, ("HomeController", "HomeController.GetUsersAsync"));
+        AssertComponents(diagram, "HomeController");
+        Assert.That(diagram.Relations, Is.Empty);
     }
 
     [Test]
-    public void Class_without_public_methods_stays_a_single_component()
+    public void Component_root_without_children_stays_a_single_component()
     {
-        var diagram = C4ComponentDiagramBuilder.Build(new InvocationTree("EmptyController"));
+        var diagram = C4ComponentDiagramBuilder.Build(new InvocationTree("EmptyController", isC4Component: true));
 
         AssertComponents(diagram, "EmptyController");
         Assert.That(diagram.Relations, Is.Empty);
     }
 
     [Test]
+    public void Non_component_root_produces_no_relations()
+    {
+        var root = new InvocationTree("RootContainer", isC4Component: false);                            // корень без флага
+        root.AddInvocation(new InvocationTree("ComponentA", isC4Component: true));
+        root.AddInvocation(new InvocationTree("ComponentB", isC4Component: true));
+
+        var diagram = C4ComponentDiagramBuilder.Build(root);
+
+        AssertComponents(diagram, "ComponentA", "ComponentB");
+        Assert.That(diagram.Relations, Is.Empty);                                 // нет предка → нет связей
+    }
+
+    [Test]
     public void Root_class_is_not_wrapped_by_a_pseudo_root_node()
     {
-        var root = new InvocationTree("HomeController");
-        root.AddChild(new InvocationTree("HomeController.GetUsersAsync"));
+        var root = new InvocationTree("HomeController", isC4Component: true);
+        root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", isC4Component: false));
 
         var diagram = C4ComponentDiagramBuilder.Build(root);
 

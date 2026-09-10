@@ -1,8 +1,10 @@
 using System.Threading;
 using System.Threading.Tasks;
+using C4ModelBuilder.Models.Attributes;
 
 namespace C4ModelBuilder.Examples.Sample
 {
+    [C4Component]
     public sealed class UserRepository : IUserRepository
     {
         private readonly IUserDataSource _userDataSource;

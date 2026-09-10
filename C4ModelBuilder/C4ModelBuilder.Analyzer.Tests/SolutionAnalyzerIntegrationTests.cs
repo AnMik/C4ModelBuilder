@@ -21,7 +21,7 @@ public class SolutionAnalyzerIntegrationTests
     }
 
     [Test]
-    public void Home_controller_root_class_produces_expected_call_tree()
+    public void Home_controller_root_class_produces_expected_component_diagram()
     {
         Assert.That(_diagrams!.Count, Is.EqualTo(2));
 
@@ -29,41 +29,30 @@ public class SolutionAnalyzerIntegrationTests
 
         AssertGraph(
             home,
-            Edge("HomeController", "HomeController.GetUsersAsync"),
-            Edge("HomeController.GetUsersAsync", "UserApplication", "ISmsGateway", "GetUsersHandler"),
-            Edge("UserApplication", "UserApplication.GetUsersAsync"),
-            Edge("UserApplication.GetUsersAsync", "UserService"),
-            Edge("UserService", "UserService.GetUsersAsync"),
-            Edge("UserService.GetUsersAsync", "UserRepository"),
-            Edge("UserRepository", "UserRepository.GetAll"),
-            Edge("UserRepository.GetAll", "UserDataSource"),
-            Edge("UserDataSource", "UserDataSource.FetchAll"),
-            Edge("GetUsersHandler", "GetUsersHandler.HandleAsync"),
-            Edge("GetUsersHandler.HandleAsync", "UserApplication"),
-            Edge("ISmsGateway", "ISmsGateway.SendAsync"));
+            Edge("HomeController", "UserApplication", "ISmsGateway", "GetUsersHandler"),
+            Edge("UserApplication", "UserService"),
+            Edge("UserService", "UserRepository"),
+            Edge("UserRepository", "UserDataSource"),
+            Edge("GetUsersHandler", "UserApplication"));
 
         Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
+        Assert.That(home.Components, Has.None.Matches<C4Component>(c => c.ComponentAlias.Contains('.')));
     }
 
     [Test]
-    public void Admin_controller_root_class_produces_expected_call_tree()
+    public void Admin_controller_root_class_produces_expected_component_diagram()
     {
         var admin = DiagramByRootAlias("AdminController");
 
         AssertGraph(
             admin,
-            Edge("AdminController", "AdminController.SendPromoAsync"),
-            Edge("AdminController.SendPromoAsync", "UserApplication", "ISmsGateway"),
-            Edge("UserApplication", "UserApplication.GetUsersAsync"),
-            Edge("UserApplication.GetUsersAsync", "UserService"),
-            Edge("UserService", "UserService.GetUsersAsync"),
-            Edge("UserService.GetUsersAsync", "UserRepository"),
-            Edge("UserRepository", "UserRepository.GetAll"),
-            Edge("UserRepository.GetAll", "UserDataSource"),
-            Edge("UserDataSource", "UserDataSource.FetchAll"),
-            Edge("ISmsGateway", "ISmsGateway.SendAsync"));
+            Edge("AdminController", "UserApplication", "ISmsGateway"),
+            Edge("UserApplication", "UserService"),
+            Edge("UserService", "UserRepository"),
+            Edge("UserRepository", "UserDataSource"));
 
         Assert.That(admin.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
+        Assert.That(admin.Components, Has.None.Matches<C4Component>(c => c.ComponentAlias.Contains('.')));
     }
 
     [Test]
@@ -80,17 +69,17 @@ public class SolutionAnalyzerIntegrationTests
 
         Assert.That(componentAliases, Is.SupersetOf(new[]
             {
-                "HomeController", "HomeController.GetUsersAsync",
-                "UserApplication", "UserApplication.GetUsersAsync",
-                "GetUsersHandler", "GetUsersHandler.HandleAsync",
+                "HomeController",
+                "UserApplication",
+                "GetUsersHandler",
                 "ISmsGateway",
             }));
 
         Assert.That(componentAliases.Intersect(
             [
-                "UserService", "UserService.GetUsersAsync",
-                "UserRepository", "UserRepository.GetAll",
-                "UserDataSource", "UserDataSource.FetchAll",
+                "UserService",
+                "UserRepository",
+                "UserDataSource",
             ]), Is.Empty);
     }
 

@@ -4,13 +4,16 @@ using C4ModelBuilder.Models.Analysis;
 namespace C4ModelBuilder.Analyzer;
 
 /// <summary>
-/// Рекурсивно обходит MemberNode, собирает <see cref="C4Component"/> и <see cref="C4Relation"/>.
+/// Обходит <see cref="InvocationTree"/>, собирает <see cref="C4Component"/> и <see cref="C4Relation"/>,
+/// схлопывая узлы, не помеченные <c>IsComponent</c>.
 /// </summary>
 internal static class C4ComponentDiagramBuilder
 {
     /// <summary>
-    /// Обходит дерево вызовов <paramref name="root"/> и делает узлом каждый компонент: корень и каждый узел
-    /// (тип/класс/интерфейс или метод). Каждое ребро родитель → ребёнок становится связью. Узлы и связи дедуплицируются.
+    /// Обходит дерево вызовов <paramref name="root"/>.
+    /// В диаграмму попадают только узлы с <c>IsComponent == true</c>.
+    /// Связи проводятся от ближайшего компонента-предка к текущему компоненту;
+    /// непомеченные узлы (методы) схлопываются. Узлы и связи дедуплицируются.
     /// </summary>
     public static C4ComponentDiagram Build(InvocationTree root, CancellationToken ct = default)
     {
@@ -18,15 +21,14 @@ internal static class C4ComponentDiagramBuilder
 
         var components = new HashSet<string>();
         var relations = new HashSet<(string From, string To)>();
-        var stack = new Stack<InvocationTree>();
-
-        stack.Push(root);
+        var stack = new Stack<(InvocationTree Node, string? NearestComponentAncestor)>();
+        stack.Push((root, null));
 
         while (stack.Count > 0)
         {
             ct.ThrowIfCancellationRequested();
 
-            var node = stack.Pop();
+            var (node, nearestComponentAncestor) = stack.Pop();
             var signature = node.NodeName;
 
             if (string.IsNullOrEmpty(signature))
@@ -34,12 +36,21 @@ internal static class C4ComponentDiagramBuilder
                 continue;
             }
 
-            components.Add(signature);
-
-            foreach (var child in node.Children)
+            if (node.IsC4Component)
             {
-                relations.Add((signature, child.NodeName));
-                stack.Push(child);
+                components.Add(signature);
+
+                if (nearestComponentAncestor != null)
+                {
+                    relations.Add((nearestComponentAncestor, signature));
+                }
+
+                nearestComponentAncestor = signature;
+            }
+
+            foreach (var child in node.Invocations)
+            {
+                stack.Push((child, nearestComponentAncestor));
             }
         }
 

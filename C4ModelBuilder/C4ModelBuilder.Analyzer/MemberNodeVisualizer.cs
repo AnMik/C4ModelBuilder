@@ -10,13 +10,13 @@ internal static class MemberNodeVisualizer
         ArgumentNullException.ThrowIfNull(node);
         WriteWithTab(depth, node.NodeName);
 
-        if (node.Children.Count == 0)
+        if (node.Invocations.Count == 0)
         {
             WriteWithTab(depth + 1, "<Empty>");
             return;
         }
 
-        foreach (var child in node.Children)
+        foreach (var child in node.Invocations)
         {
             WriteToConsole(child, depth + 1);
         }
