@@ -20,11 +20,11 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
             return null;
         }
 
-        var node = new MemberNode(classMethod.Name);
+        var memberNode = new MemberNode(classMethod.Name);
 
         foreach (var invokedMethod in GetInvokedMethods(classMethod))
         {
-            var memberNode = new MemberNode(invokedMethod.ClassName);
+            var invokedMemberNode = new MemberNode(invokedMethod.ClassName);
 
             var methodChild = invokedMethod.ClassMethod != null
                 ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)
@@ -32,12 +32,12 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
             if (methodChild != null)
             {
-                memberNode.AddChild(methodChild);
-                node.AddChild(memberNode);
+                invokedMemberNode.AddChild(methodChild);
+                memberNode.AddChild(invokedMemberNode);
             }
         }
 
-        return node;
+        return memberNode;
     }
 
     private IEnumerable<InvokedMethod> GetInvokedMethods(ClassMethod classMethod)
@@ -49,6 +49,29 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
                 .Select(x => x.Compilation.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree))
                 .FirstOrDefault()
             ?? throw new InvalidOperationException($"Не найдена семантическая модель для метода {classMethod.MethodSyntax}");
+
+        var parentClassFields =
+            classMethod
+                .ClassSyntax
+                .Members
+                .OfType<FieldDeclarationSyntax>()
+                .SelectMany(x => x.Declaration.Variables)
+                .Select(
+                    x => (FieldName: x.Identifier.Text,
+                          FieldType: (methodSemanticModel.GetDeclaredSymbol(x) as IFieldSymbol)?.Type as INamedTypeSymbol))
+                .Where(
+                    x => x.FieldType is
+                        {
+                            TypeKind: TypeKind.Class,
+                            MetadataToken: 0,
+                            Name: not "IMapper" and not "ITaggableCache"
+                        }
+                        or
+                        {
+                            TypeKind: TypeKind.Interface,
+                            Name: not "IMapper" and not "ITaggableCache"
+                        })
+                .ToDictionary(x => x.FieldName, x => x.FieldType!);
 
         foreach (var methodInvocation in classMethod.MethodSyntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
@@ -115,29 +138,6 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
             }
             else
             {
-                var parentClassFields =
-                    classMethod
-                        .ClassSyntax
-                        .Members
-                        .OfType<FieldDeclarationSyntax>()
-                        .SelectMany(x => x.Declaration.Variables)
-                        .Select(
-                            x => (FieldName: x.Identifier.Text,
-                                  FieldType: (methodSemanticModel.GetDeclaredSymbol(x) as IFieldSymbol)?.Type as INamedTypeSymbol))
-                        .Where(
-                            x => x.FieldType is
-                                {
-                                    TypeKind: TypeKind.Class,
-                                    MetadataToken: 0,
-                                    Name: not "IMapper" and not "ITaggableCache"
-                                }
-                                or
-                                {
-                                    TypeKind: TypeKind.Interface,
-                                    Name: not "IMapper" and not "ITaggableCache"
-                                })
-                        .ToDictionary(x => x.FieldName, x => x.FieldType!);
-
                 var fieldName =
                     methodInvocation
                         .ChildNodes()
@@ -190,7 +190,7 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                             if (implementingClassSyntax == null)
                             {
-                                // Имплементация интерфейса не найдена в солюшене (например, внешняя библиотека): добавляем узел-интерфейс и его метод как лист.
+                                // Реализация интерфейса не найдена, добавляется узел-интерфейс.
                                 var externalMethodName =
                                     (methodSemanticModel.GetSymbolInfo(methodInvocation).Symbol as IMethodSymbol)?.Name
                                     ?? string.Empty;
