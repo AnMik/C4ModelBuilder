@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
+using C4ModelBuilder.Analyzer.Infrastructure;
 using C4ModelBuilder.Analyzer.Models;
 using C4ModelBuilder.Models.Analysis;
-using C4ModelBuilder.Models.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -68,10 +68,7 @@ public sealed class SolutionAnalyzer
 
     private static bool IsRootComponent(ParsedSolution.Project.Class @class)
         => @class
-                .SemanticModel
-                .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
-                ?.GetAttributes()
-                .FirstOrDefault(attribute => attribute.AttributeClass?.Name == nameof(C4ComponentAttribute))
-                ?.NamedArguments.Any(argument => argument is { Key: nameof(C4ComponentAttribute.IsRoot), Value.Value: true })
-            == true;
+            .SemanticModel
+            .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
+            .IsRootComponent();
 }

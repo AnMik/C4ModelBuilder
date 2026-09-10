@@ -42,13 +42,7 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
     private IEnumerable<InvokedMethod> GetInvokedMethods(ClassMethod classMethod)
     {
-        var methodSemanticModel =
-            parsedSolution
-                .Projects
-                .Where(x => x.Compilation.SyntaxTrees.Contains(classMethod.MethodSyntax.SyntaxTree))
-                .Select(x => x.Compilation.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree))
-                .FirstOrDefault()
-            ?? throw new InvalidOperationException($"Не найдена семантическая модель для метода {classMethod.MethodSyntax}");
+        var methodSemanticModel = parsedSolution.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree);
 
         var parentClassFields =
             classMethod
@@ -134,7 +128,9 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
                 var handlerTypedSymbol = rdsCqrsRequests.GetValueOrDefault(queryName)
                     ?? throw new InvalidOperationException($"Не найден cqrs хендлер для {queryName}.");
 
-                yield return InvokedMethod.From(handlerTypedSymbol);
+                var (classSymbol, methodSymbol) = parsedSolution.GetDeclaredSymbols(handlerTypedSymbol);
+
+                yield return InvokedMethod.From(handlerTypedSymbol, classSymbol, methodSymbol);
             }
             else
             {
@@ -165,7 +161,10 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                     if (methodDeclarationSyntax != null)
                     {
-                        yield return InvokedMethod.From(classMethod with { MethodSyntax = methodDeclarationSyntax });
+                        var methodClassMethod = classMethod with { MethodSyntax = methodDeclarationSyntax };
+                        var (classSymbol, methodSymbol) = parsedSolution.GetDeclaredSymbols(methodClassMethod);
+
+                        yield return InvokedMethod.From(methodClassMethod, classSymbol, methodSymbol);
                     }
                 }
                 else
@@ -190,12 +189,10 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                             if (implementingClassSyntax == null)
                             {
-                                // Реализация интерфейса не найдена, добавляется узел-интерфейс.
-                                var externalMethodName =
-                                    (methodSemanticModel.GetSymbolInfo(methodInvocation).Symbol as IMethodSymbol)?.Name
-                                    ?? string.Empty;
-
-                                yield return InvokedMethod.From(fieldTypeSymbol.Name, externalMethodName);
+                                // Реализация интерфейса не найдена, добавляется интерфейс.
+                                yield return InvokedMethod.From(
+                                    classSymbol: fieldTypeSymbol,
+                                    methodSymbol: methodSemanticModel.GetSymbolInfo(methodInvocation).Symbol as IMethodSymbol);
 
                                 break;
                             }
@@ -211,7 +208,9 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                             if (invokedMethodSyntax != null)
                             {
-                                yield return InvokedMethod.From(invokedMethodSyntax);
+                                var (classSymbol, _) = parsedSolution.GetDeclaredSymbols(invokedMethodSyntax);
+
+                                yield return InvokedMethod.From(invokedMethodSyntax, classSymbol, methodSymbol);
                             }
 
                             break;
@@ -226,7 +225,9 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
                                 ?? throw new InvalidOperationException(
                                     $"Не найден метод {methodSemanticModel} в классе {fieldTypeSymbol.ToDisplayString()}.");
 
-                            yield return InvokedMethod.From(invokingClassMethod);
+                            var (classSymbol, _) = parsedSolution.GetDeclaredSymbols(invokingClassMethod);
+
+                            yield return InvokedMethod.From(invokingClassMethod, classSymbol, methodSymbol);
 
                             break;
                         }
