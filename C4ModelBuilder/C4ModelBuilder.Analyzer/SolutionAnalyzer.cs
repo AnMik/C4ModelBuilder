@@ -42,7 +42,7 @@ public sealed class SolutionAnalyzer
 
         foreach (var classSyntax in rootComponentClassSyntaxes)
         {
-            var rootMemberNode = new MemberNode(classSyntax.Identifier.Text);
+            var rootNode = new InvocationTree(classSyntax.Identifier.Text);
 
             var publicMethods = classSyntax
                 .Members
@@ -51,16 +51,18 @@ public sealed class SolutionAnalyzer
 
             foreach (var publicMethod in publicMethods)
             {
-                var methodNode = await _methodAnalyzer.AnalyzeMethod(new ClassMethod(classSyntax, publicMethod), currentDepth: 0, ct);
-                if (methodNode != null)
+                var invokedMethodNode =
+                    await _methodAnalyzer.AnalyzeMethod(new ClassMethod(classSyntax, publicMethod), currentDepth: 0, ct);
+
+                if (invokedMethodNode != null)
                 {
-                    rootMemberNode.AddChild(methodNode);
+                    rootNode.AddChild(invokedMethodNode);
                 }
             }
 
-            MemberNodeVisualizer.WriteToConsole(rootMemberNode);
+            MemberNodeVisualizer.WriteToConsole(rootNode);
 
-            yield return C4ComponentDiagramBuilder.Build(rootMemberNode, ct);
+            yield return C4ComponentDiagramBuilder.Build(rootNode, ct);
         }
     }
 

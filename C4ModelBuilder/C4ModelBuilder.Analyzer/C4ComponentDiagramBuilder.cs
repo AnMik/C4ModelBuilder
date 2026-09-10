@@ -12,13 +12,13 @@ internal static class C4ComponentDiagramBuilder
     /// Обходит дерево вызовов <paramref name="root"/> и делает узлом каждый компонент: корень и каждый узел
     /// (тип/класс/интерфейс или метод). Каждое ребро родитель → ребёнок становится связью. Узлы и связи дедуплицируются.
     /// </summary>
-    public static C4ComponentDiagram Build(MemberNode root, CancellationToken ct = default)
+    public static C4ComponentDiagram Build(InvocationTree root, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(root);
 
         var components = new HashSet<string>();
         var relations = new HashSet<(string From, string To)>();
-        var stack = new Stack<MemberNode>();
+        var stack = new Stack<InvocationTree>();
 
         stack.Push(root);
 
@@ -27,7 +27,7 @@ internal static class C4ComponentDiagramBuilder
             ct.ThrowIfCancellationRequested();
 
             var node = stack.Pop();
-            var signature = node.Name;
+            var signature = node.NodeName;
 
             if (string.IsNullOrEmpty(signature))
             {
@@ -38,7 +38,7 @@ internal static class C4ComponentDiagramBuilder
 
             foreach (var child in node.Children)
             {
-                relations.Add((signature, child.Name));
+                relations.Add((signature, child.NodeName));
                 stack.Push(child);
             }
         }

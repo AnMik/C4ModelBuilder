@@ -5,10 +5,10 @@ namespace C4ModelBuilder.Analyzer;
 
 internal static class MemberNodeVisualizer
 {
-    public static void WriteToConsole(MemberNode node, int depth = 0)
+    public static void WriteToConsole(InvocationTree node, int depth = 0)
     {
         ArgumentNullException.ThrowIfNull(node);
-        WriteWithTab(depth, node.Name);
+        WriteWithTab(depth, node.NodeName);
 
         if (node.Children.Count == 0)
         {

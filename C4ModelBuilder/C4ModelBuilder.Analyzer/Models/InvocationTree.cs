@@ -1,19 +1,19 @@
 ﻿namespace C4ModelBuilder.Analyzer.Models;
 
-internal sealed class MemberNode(string name)
+internal sealed class InvocationTree(string nodeName)
 {
     /// <summary>
     /// Сигнатура узла (например, "AccountController" или "AccountController.GetStoredPaymentCards")
     /// </summary>
-    public string Name { get; } = name;
+    public string NodeName { get; } = nodeName;
 
     /// <summary>
     /// Дочерние узлы — вызовы методов из текущего метода
     /// </summary>
-    public List<MemberNode> Children { get; } = [];
+    public List<InvocationTree> Children { get; } = [];
 
     /// <summary>
     /// Добавить дочерний узел
     /// </summary>
-    public void AddChild(MemberNode child) => Children.Add(child);
+    public void AddChild(InvocationTree child) => Children.Add(child);
 }

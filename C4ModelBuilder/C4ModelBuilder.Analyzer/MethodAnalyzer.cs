@@ -8,7 +8,7 @@ namespace C4ModelBuilder.Analyzer;
 
 internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<string, ClassMethod> rdsCqrsRequests, int maxDepth)
 {
-    public async Task<MemberNode?> AnalyzeMethod(
+    public async Task<InvocationTree?> AnalyzeMethod(
         ClassMethod classMethod,
         int currentDepth,
         CancellationToken ct = default)
@@ -20,24 +20,24 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
             return null;
         }
 
-        var memberNode = new MemberNode(classMethod.Name);
+        var currentMethodNode = new InvocationTree(classMethod.Name);
 
         foreach (var invokedMethod in GetInvokedMethods(classMethod))
         {
-            var invokedMemberNode = new MemberNode(invokedMethod.ClassName);
+            var invokedClassNode = new InvocationTree(invokedMethod.ClassName);
 
-            var methodChild = invokedMethod.ClassMethod != null
+            var invokedMethodNode = invokedMethod.ClassMethod != null
                 ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)
-                : new MemberNode($"{invokedMethod.ClassName}.{invokedMethod.MethodName}");
+                : new InvocationTree($"{invokedMethod.ClassName}.{invokedMethod.MethodName}");
 
-            if (methodChild != null)
+            if (invokedMethodNode != null)
             {
-                invokedMemberNode.AddChild(methodChild);
-                memberNode.AddChild(invokedMemberNode);
+                invokedClassNode.AddChild(invokedMethodNode);
+                currentMethodNode.AddChild(invokedClassNode);
             }
         }
 
-        return memberNode;
+        return currentMethodNode;
     }
 
     private IEnumerable<InvokedMethod> GetInvokedMethods(ClassMethod classMethod)
