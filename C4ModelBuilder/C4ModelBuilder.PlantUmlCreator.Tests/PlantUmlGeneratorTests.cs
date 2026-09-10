@@ -8,7 +8,7 @@ public class PlantUmlGeneratorTests
     [Test]
     public void Generator_returns_only_header_and_footer_when_context_is_empty()
     {
-        var ctx = new C4ComponentDiagram(Array.Empty<C4Component>(), Array.Empty<C4Relation>());
+        var ctx = new C4ComponentDiagram(DiagramName: string.Empty, Array.Empty<C4Component>(), Array.Empty<C4Relation>());
 
         var result = PlantUmlGenerator.Generate(ctx);
 
@@ -27,7 +27,10 @@ public class PlantUmlGeneratorTests
     [Test]
     public void Generator_renders_single_component_without_relations()
     {
-        var ctx = new C4ComponentDiagram(Components: [new C4Component("MyApp", "MyApp", string.Empty)], Array.Empty<C4Relation>());
+        var ctx = new C4ComponentDiagram(
+            DiagramName: string.Empty,
+            Components: [new C4Component("MyApp", "MyApp", string.Empty)],
+            Relations: Array.Empty<C4Relation>());
 
         var result = PlantUmlGenerator.Generate(ctx);
 
@@ -40,13 +43,12 @@ public class PlantUmlGeneratorTests
     public void Generator_renders_two_components_and_one_relation()
     {
         var ctx = new C4ComponentDiagram(
-            Components:
-            [
+            DiagramName: string.Empty,
+            Components: [
                 new C4Component("ServiceA", "ServiceA", string.Empty),
                 new C4Component("ServiceB", "ServiceB", string.Empty),
             ],
-            Relations:
-            [
+            Relations: [
                 new C4Relation("ServiceA", "ServiceB", string.Empty),
             ]);
 
@@ -63,14 +65,13 @@ public class PlantUmlGeneratorTests
     public void Generator_renders_duplicate_components_as_they_are()
     {
         var ctx = new C4ComponentDiagram(
-            Components:
-            [
+            DiagramName: string.Empty,
+            Components: [
                 new C4Component("A", "A", string.Empty),
                 new C4Component("A", "A", string.Empty),
                 new C4Component("B", "B", string.Empty),
             ],
-            Relations:
-            [
+            Relations: [
                 new C4Relation("A", "B", string.Empty),
             ]);
 
@@ -91,11 +92,11 @@ public class PlantUmlGeneratorTests
     public void Generator_renders_component_macro_with_description_and_technology()
     {
         var ctx = new C4ComponentDiagram(
-            Components:
-            [
+            DiagramName: string.Empty,
+            Components: [
                 new C4Component("ProductService", "Product Service", "Service for managing products"),
             ],
-            Array.Empty<C4Relation>());
+            Relations: Array.Empty<C4Relation>());
 
         var result = PlantUmlGenerator.Generate(ctx);
 
@@ -106,13 +107,12 @@ public class PlantUmlGeneratorTests
     public void Generator_renders_relation_macro_with_description_and_technology()
     {
         var ctx = new C4ComponentDiagram(
-            Components:
-            [
+            DiagramName: string.Empty,
+            Components: [
                 new C4Component("A", "A", string.Empty),
                 new C4Component("B", "B", string.Empty),
             ],
-            Relations:
-            [
+            Relations: [
                 new C4Relation("A", "B", "calls"),
             ]);
 

@@ -30,12 +30,11 @@ async Task Run(CancellationTokenSource cts)
     var solutionAnalyzer = await SolutionAnalyzer.Create(solutionFilePath, maxDepth: 15, cts.Token);
     var componentDiagrams = solutionAnalyzer.AnalyzeComponents(cts.Token);
 
-    var i = 1;
     await foreach (var componentDiagram in componentDiagrams)
     {
         var plantUml = PlantUmlGenerator.Generate(componentDiagram);
 
-        var path = Path.Combine(solutionDirectory.Parent!.FullName, "output", $"uml{i++}.puml");
+        var path = Path.Combine(solutionDirectory.Parent!.FullName, "output", $"{componentDiagram.DiagramName}.puml");
         await File.WriteAllTextAsync(path, plantUml);
         Console.WriteLine(path);
     }

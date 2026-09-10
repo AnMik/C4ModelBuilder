@@ -62,7 +62,7 @@ public sealed class SolutionAnalyzer
 
             MemberNodeVisualizer.WriteToConsole(rootNode);
 
-            yield return C4ComponentDiagramBuilder.Build(rootNode, ct);
+            yield return C4ComponentDiagramBuilder.Build(rootNode);
         }
     }
 

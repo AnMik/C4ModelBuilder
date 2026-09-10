@@ -3,8 +3,13 @@ namespace C4ModelBuilder.Models.Analysis;
 /// <summary>
 /// Контекст для построения C4 диаграммы: коллекция компонентов и связей между ними.
 /// </summary>
-public sealed record C4ComponentDiagram(IReadOnlyCollection<C4Component> Components, IReadOnlyCollection<C4Relation> Relations)
+public sealed record C4ComponentDiagram(
+    string DiagramName,
+    IReadOnlyCollection<C4Component> Components,
+    IReadOnlyCollection<C4Relation> Relations)
 {
+    public string DiagramName { get; init; } = DiagramName;
+
     /// <summary>
     /// Компоненты (узлы) диаграммы.
     /// </summary>
