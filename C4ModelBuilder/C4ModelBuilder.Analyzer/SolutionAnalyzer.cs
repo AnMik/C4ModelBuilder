@@ -23,12 +23,7 @@ public static class SolutionAnalyzer
 
         var parsedSolution = await SolutionParser.Parse(solution, ct);
 
-        var requestHandlersMapping = RdsCqrsRequestsAnalyzer
-            .Analyze(parsedSolution, ct)
-            .GroupBy(
-                cqrsRequest => cqrsRequest.Name,
-                (name, cqrsRequests) => (RequestName: name, ClassMethod: cqrsRequests.First().HandlerClassMethod))
-            .ToDictionary(x => x.RequestName, x => x.ClassMethod);
+        var requestHandlersMapping = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, ct);
 
         var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth);
 
@@ -61,7 +56,7 @@ public static class SolutionAnalyzer
         }
     }
 
-    private static bool IsRootClass(ParsedProject.Class @class)
+    private static bool IsRootClass(ParsedSolution.Project.Class @class)
     {
         var symbol = @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax);
         var attribute = symbol?.GetAttributes()

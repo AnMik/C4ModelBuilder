@@ -3,14 +3,24 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer.Models;
 
-internal sealed record ParsedSolution(IReadOnlyCollection<ParsedProject> Projects)
+internal sealed record ParsedSolution(IReadOnlyCollection<ParsedSolution.Project> Projects)
 {
+    internal sealed record Project(Compilation Compilation, IReadOnlyCollection<Project.Class> Classes)
+    {
+        public sealed record Class(
+            Document Document,
+            SyntaxNode SyntaxRootNode,
+            SemanticModel SemanticModel,
+            ClassDeclarationSyntax ClassDeclarationSyntax);
+    }
+
+
     public ClassMethod? FindMethodDeclaration(IMethodSymbol methodSymbol)
     {
         var methodLocation = methodSymbol.Locations.FirstOrDefault(x => x.IsInSource);
 
         var methodFilePath = methodLocation?.SourceTree?.FilePath
-            ?? throw new InvalidOperationException($"Не найден путь к файлу метода {methodSymbol}");
+            ?? throw new InvalidOperationException($"Не найден путь к файлу метода {methodSymbol}.");
 
         var document = Projects.SelectMany(x => x.Classes).FirstOrDefault(x => x.Document.FilePath == methodFilePath);
 

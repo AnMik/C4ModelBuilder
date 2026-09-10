@@ -7,8 +7,10 @@ namespace C4ModelBuilder.Analyzer;
 
 internal static class RdsCqrsRequestsAnalyzer
 {
-    public static IEnumerable<CqrsRequest> Analyze(ParsedSolution parsedSolution, CancellationToken ct = default)
+    public static Dictionary<string, ClassMethod> Analyze(ParsedSolution parsedSolution, CancellationToken ct = default)
     {
+        var requestHandlers = new Dictionary<string, ClassMethod>();
+
         var cqrsRequestClasses = parsedSolution
             .Projects
             .SelectMany(x => x.Classes)
@@ -36,11 +38,13 @@ internal static class RdsCqrsRequestsAnalyzer
                         .FirstOrDefault(x => x.Identifier.Text == "HandleAsync")
                     ?? throw new InvalidOperationException("В cqrs хендлере не найден метод HandleAsync().");
 
-                yield return new CqrsRequest(cqrsRequestName, new ClassMethod(@class.ClassDeclarationSyntax, cqrsHandlerMethod));
+                requestHandlers.TryAdd(cqrsRequestName, new ClassMethod(@class.ClassDeclarationSyntax, cqrsHandlerMethod));
 
                 break;
             }
         }
+
+        return requestHandlers;
     }
 
     private static bool IsCqrsRequest(ClassDeclarationSyntax @class, SemanticModel semanticModel)

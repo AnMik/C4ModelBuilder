@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
 
-internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<string, ClassMethod> cqrsHandlersMapping, int maxDepth)
+internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<string, ClassMethod> rdsCqrsRequests, int maxDepth)
 {
     public async Task<MemberNode?> AnalyzeMethod(
         ClassMethod classMethod,
@@ -108,7 +108,7 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
                         ?.Identifier.Text
                     ?? string.Empty;
 
-                var handlerTypedSymbol = cqrsHandlersMapping.GetValueOrDefault(queryName)
+                var handlerTypedSymbol = rdsCqrsRequests.GetValueOrDefault(queryName)
                     ?? throw new InvalidOperationException($"Не найден cqrs хендлер для {queryName}.");
 
                 yield return InvokedMethod.From(handlerTypedSymbol);
