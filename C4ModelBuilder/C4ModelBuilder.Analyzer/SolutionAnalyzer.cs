@@ -23,18 +23,12 @@ public static class SolutionAnalyzer
 
         var parsedSolution = await SolutionParser.Parse(solution, ct);
 
-        var requestHandlersMapping = RdsCqrsRequestsFinder
-            .Find(parsedSolution, ct)
+        var requestHandlersMapping = RdsCqrsRequestsAnalyzer
+            .Analyze(parsedSolution, ct)
             .GroupBy(
                 cqrsRequest => cqrsRequest.Name,
-                (name, cqrsRequests) =>
-                {
-                    var firstHandler = cqrsRequests.First();
-                    return (RequestName: name,
-                            RequestHandlerClass: firstHandler.HandlerClass,
-                            RequestHandlerMethod: firstHandler.HandlerMethod);
-                })
-            .ToDictionary(x => x.RequestName, x => (x.RequestHandlerClass, x.RequestHandlerMethod));
+                (name, cqrsRequests) => (RequestName: name, ClassMethod: cqrsRequests.First().HandlerClassMethod))
+            .ToDictionary(x => x.RequestName, x => x.ClassMethod);
 
         var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth);
 
@@ -54,7 +48,7 @@ public static class SolutionAnalyzer
 
             foreach (var publicMethod in publicMethods)
             {
-                var methodNode = await methodAnalyzer.AnalyzeMethod(classSyntax, publicMethod, currentDepth: 0, ct);
+                var methodNode = await methodAnalyzer.AnalyzeMethod(new ClassMethod(classSyntax, publicMethod), currentDepth: 0, ct);
                 if (methodNode != null)
                 {
                     classNode.AddChild(methodNode);
