@@ -20,15 +20,20 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
             return null;
         }
 
-        var currentMethodNode = new InvocationTree(classMethod.Name);
+        var methodSemanticModel = parsedSolution.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree);
+        var methodSymbol = methodSemanticModel.GetDeclaredSymbol(classMethod.MethodSyntax);
 
-        foreach (var invokedMethod in GetInvokedMethods(classMethod))
+        var currentMethodNode = new InvocationTree(classMethod.Name, isComponent: methodSymbol.HasC4ComponentAttribute());
+
+        foreach (var invokedMethod in GetInvokedMethods(classMethod, methodSemanticModel))
         {
-            var invokedClassNode = new InvocationTree(invokedMethod.ClassName);
+            var invokedClassNode = new InvocationTree(invokedMethod.ClassName, isComponent: invokedMethod.IsClassComponent);
 
             var invokedMethodNode = invokedMethod.ClassMethod != null
                 ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)
-                : new InvocationTree($"{invokedMethod.ClassName}.{invokedMethod.MethodName}");
+                : new InvocationTree(
+                    $"{invokedMethod.ClassName}.{invokedMethod.MethodName}",
+                    isComponent: invokedMethod.IsMethodComponent);
 
             if (invokedMethodNode != null)
             {
@@ -40,10 +45,8 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
         return currentMethodNode;
     }
 
-    private IEnumerable<InvokedMethod> GetInvokedMethods(ClassMethod classMethod)
+    private IEnumerable<InvokedMethod> GetInvokedMethods(ClassMethod classMethod, SemanticModel methodSemanticModel)
     {
-        var methodSemanticModel = parsedSolution.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree);
-
         var parentClassFields =
             classMethod
                 .ClassSyntax
