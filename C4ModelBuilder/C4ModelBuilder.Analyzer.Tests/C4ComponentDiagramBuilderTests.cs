@@ -1,5 +1,3 @@
-using System.Linq;
-using C4ModelBuilder.Analyzer;
 using C4ModelBuilder.Analyzer.Models;
 using C4ModelBuilder.Models.Analysis;
 
@@ -146,6 +144,55 @@ public class C4ComponentDiagramBuilderTests
             .ToHashSet();
 
         CollectionAssert.AreEquivalent(expected, actual);
+    }
+
+    [Test]
+    public void Component_description_is_preserved_in_diagram()
+    {
+        var root = new InvocationTree("HomeController", isC4Component: true, description: "Main controller");
+        root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", isC4Component: false));
+        root.AddInvocation(new InvocationTree("UserService", isC4Component: true, description: "User business logic"));
+
+        var diagram = C4ComponentDiagramBuilder.Build(root);
+
+        AssertComponents(diagram, "HomeController", "UserService");
+
+        var homeController = diagram.Components.Single(c => c.ComponentAlias == "HomeController");
+        Assert.That(homeController.Description, Is.EqualTo("Main controller"));
+
+        var userService = diagram.Components.Single(c => c.ComponentAlias == "UserService");
+        Assert.That(userService.Description, Is.EqualTo("User business logic"));
+    }
+
+    [Test]
+    public void Component_without_description_stores_empty_string()
+    {
+        var root = new InvocationTree("HomeController", isC4Component: true);
+
+        var diagram = C4ComponentDiagramBuilder.Build(root);
+
+        var component = diagram.Components.Single();
+        Assert.That(component.Description, Is.EqualTo(string.Empty));
+    }
+
+    [Test]
+    public void Non_component_node_description_is_not_stored()
+    {
+        var root = new InvocationTree("HomeController", isC4Component: true, description: "Controller");
+        var method = new InvocationTree("HomeController.GetUsersAsync", isC4Component: false, description: "Some method");
+        var userApp = new InvocationTree("UserApplication", isC4Component: true, description: "User app logic");
+        method.AddInvocation(userApp);
+        root.AddInvocation(method);
+
+        var diagram = C4ComponentDiagramBuilder.Build(root);
+
+        AssertComponents(diagram, "HomeController", "UserApplication");
+
+        var homeController = diagram.Components.Single(c => c.ComponentAlias == "HomeController");
+        Assert.That(homeController.Description, Is.EqualTo("Controller"));
+
+        var userApplication = diagram.Components.Single(c => c.ComponentAlias == "UserApplication");
+        Assert.That(userApplication.Description, Is.EqualTo("User app logic"));
     }
 }
 

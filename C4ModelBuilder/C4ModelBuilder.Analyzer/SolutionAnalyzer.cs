@@ -34,15 +34,15 @@ public sealed class SolutionAnalyzer
 
     public async IAsyncEnumerable<C4ComponentDiagram> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
     {
-        var rootComponentClassSyntaxes = _parsedSolution
+        var rootComponentClasses = _parsedSolution
             .Projects
             .SelectMany(x => x.Classes)
-            .Where(IsRootComponent)
-            .Select(x => x.ClassDeclarationSyntax);
+            .Where(IsRootComponent);
 
-        foreach (var classSyntax in rootComponentClassSyntaxes)
+        foreach (var @class in rootComponentClasses)
         {
-            var rootNode = new InvocationTree(classSyntax.Identifier.Text, isC4Component: true);
+            var classSyntax = @class.ClassDeclarationSyntax;
+            var rootNode = new InvocationTree(classSyntax.Identifier.Text, isC4Component: true, description: GetClassDescription(@class));
 
             var publicMethods = classSyntax
                 .Members
@@ -71,4 +71,10 @@ public sealed class SolutionAnalyzer
             .SemanticModel
             .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
             .IsRootComponent();
+
+    private static string? GetClassDescription(ParsedSolution.Project.Class @class)
+        => @class
+            .SemanticModel
+            .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
+            .GetC4ComponentDescription();
 }

@@ -12,8 +12,8 @@ internal static class C4ComponentDiagramBuilder
     {
         ArgumentNullException.ThrowIfNull(root);
 
-        var rootNodeName = root.NodeName;
         var components = new HashSet<string>();
+        var descriptions = new Dictionary<string, string?>();
         var relations = new HashSet<(string From, string To)>();
         var stack = new Stack<(InvocationTree Node, string? NearestComponentAncestor)>();
         stack.Push((root, null));
@@ -31,10 +31,11 @@ internal static class C4ComponentDiagramBuilder
             if (node.IsC4Component)
             {
                 components.Add(signature);
+                descriptions[signature] = node.Description;
 
                 if (nearestComponentAncestor != null)
                 {
-                    relations.Add((nearestComponentAncestor, signature));
+                    relations.Add((From: nearestComponentAncestor, To: signature));
                 }
 
                 nearestComponentAncestor = signature;
@@ -47,13 +48,17 @@ internal static class C4ComponentDiagramBuilder
         }
 
         return new C4ComponentDiagram(
-            DiagramName: rootNodeName,
+            DiagramName: root.NodeName,
             Components: components
-                .Select(signature => new C4Component(ComponentAlias: signature, ComponentName: signature, Description: string.Empty))
+                .Select(
+                    signature => new C4Component(
+                        ComponentAlias: signature,
+                        ComponentName: signature,
+                        Description: descriptions.GetValueOrDefault(signature) ?? string.Empty))
                 .ToList(),
             Relations: relations
                 .Select(
-                    relation => new C4Relation(FromComponentAlias: relation.From, ToComponentAlias: relation.To, Description: string.Empty))
+                    relation => new C4Relation(FromComponentAlias: relation.From, ToComponentAlias: relation.To))
                 .ToList());
     }
 }

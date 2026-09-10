@@ -1,6 +1,6 @@
 ﻿namespace C4ModelBuilder.Analyzer.Models;
 
-internal sealed class InvocationTree(string nodeName, bool isC4Component)
+internal sealed class InvocationTree(string nodeName, bool isC4Component, string? description = null)
 {
     /// <summary>
     /// Сигнатура узла (например, "AccountController" или "AccountController.GetStoredPaymentCards")
@@ -11,6 +11,11 @@ internal sealed class InvocationTree(string nodeName, bool isC4Component)
     /// Признак того, что на узле проставлен атрибут <see cref="C4ModelBuilder.Models.Attributes.C4ComponentAttribute"/>.
     /// </summary>
     public bool IsC4Component { get; } = isC4Component;
+
+    /// <summary>
+    /// Описание из атрибута <see cref="C4ModelBuilder.Models.Attributes.C4ComponentAttribute"/>.
+    /// </summary>
+    public string? Description { get; } = description;
 
     /// <summary>
     /// Дочерние узлы — вызовы методов из текущего метода

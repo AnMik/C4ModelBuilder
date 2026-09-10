@@ -4,7 +4,7 @@ using C4ModelBuilder.Models.Attributes;
 
 namespace C4ModelBuilder.Examples.Sample
 {
-    [C4Component(IsRoot = true)]
+    [C4Component(IsRoot = true, Description = "Main page: list users and send welcome")]
     public sealed class HomeController
     {
         private readonly Rds.Cqrs.Queries.IQueryService _queryService;
@@ -21,6 +21,7 @@ namespace C4ModelBuilder.Examples.Sample
             _smsGateway = smsGateway;
         }
 
+        [C4Component(Description = "Get users list with welcome message")]
         public async Task GetUsersAsync(CancellationToken ct)
         {
             var users = await _userApplication.GetUsersAsync(ct);

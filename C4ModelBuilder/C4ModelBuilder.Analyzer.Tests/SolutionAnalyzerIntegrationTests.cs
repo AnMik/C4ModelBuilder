@@ -15,9 +15,7 @@ public class SolutionAnalyzerIntegrationTests
 
         var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 15, CancellationToken.None);
 
-        _diagrams = await analyzer
-            .AnalyzeComponents(CancellationToken.None)
-            .ToListAsync(CancellationToken.None);
+        _diagrams = await analyzer.AnalyzeComponents(CancellationToken.None).ToListAsync(CancellationToken.None);
     }
 
     [Test]
@@ -29,14 +27,31 @@ public class SolutionAnalyzerIntegrationTests
 
         AssertGraph(
             home,
-            Edge("HomeController", "UserApplication", "ISmsGateway", "GetUsersHandler"),
-            Edge("UserApplication", "UserService"),
-            Edge("UserService", "UserRepository"),
-            Edge("UserRepository", "UserDataSource"),
-            Edge("GetUsersHandler", "UserApplication"));
+            [
+                new GraphEdge("HomeController", "HomeController.GetUsersAsync"),
+                new GraphEdge("HomeController.GetUsersAsync", "UserApplication", "ISmsGateway", "GetUsersHandler"),
+                new GraphEdge("UserApplication", "UserService"),
+                new GraphEdge("UserService", "UserRepository"),
+                new GraphEdge("UserRepository", "UserRepository.GetAll"),
+                new GraphEdge("UserRepository.GetAll", "UserDataSource"),
+                new GraphEdge("GetUsersHandler", "UserApplication"),
+                new GraphEdge("ISmsGateway", "ISmsGateway.SendAsync")
+            ]);
 
         Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
-        Assert.That(home.Components, Has.None.Matches<C4Component>(c => c.ComponentAlias.Contains('.')));
+
+        AssertDescriptions(
+            home,
+            ("HomeController", "Main page: list users and send welcome"),
+            ("HomeController.GetUsersAsync", "Get users list with welcome message"),
+            ("UserApplication", "User application use-case layer"),
+            ("UserService", "User business logic"),
+            ("UserRepository", "User data repository"),
+            ("UserRepository.GetAll", "Fetch all users from data source"),
+            ("UserDataSource", "User data source (DB)"),
+            ("GetUsersHandler", "CQRS handler for GetUsers query"),
+            ("ISmsGateway", "External SMS gateway"),
+            ("ISmsGateway.SendAsync", "Send SMS message"));
     }
 
     [Test]
@@ -46,13 +61,29 @@ public class SolutionAnalyzerIntegrationTests
 
         AssertGraph(
             admin,
-            Edge("AdminController", "UserApplication", "ISmsGateway"),
-            Edge("UserApplication", "UserService"),
-            Edge("UserService", "UserRepository"),
-            Edge("UserRepository", "UserDataSource"));
+            [
+                new GraphEdge("AdminController", "AdminController.SendPromoAsync"),
+                new GraphEdge("AdminController.SendPromoAsync", "UserApplication", "ISmsGateway"),
+                new GraphEdge("UserApplication", "UserService"),
+                new GraphEdge("UserService", "UserRepository"),
+                new GraphEdge("UserRepository", "UserRepository.GetAll"),
+                new GraphEdge("UserRepository.GetAll", "UserDataSource"),
+                new GraphEdge("ISmsGateway", "ISmsGateway.SendAsync")
+            ]);
 
         Assert.That(admin.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
-        Assert.That(admin.Components, Has.None.Matches<C4Component>(c => c.ComponentAlias.Contains('.')));
+
+        AssertDescriptions(
+            admin,
+            ("AdminController", "Admin page: send promo campaigns"),
+            ("AdminController.SendPromoAsync", "Send promo campaign via SMS"),
+            ("UserApplication", "User application use-case layer"),
+            ("UserService", "User business logic"),
+            ("UserRepository", "User data repository"),
+            ("UserRepository.GetAll", "Fetch all users from data source"),
+            ("UserDataSource", "User data source (DB)"),
+            ("ISmsGateway", "External SMS gateway"),
+            ("ISmsGateway.SendAsync", "Send SMS message"));
     }
 
     [Test]
@@ -88,9 +119,7 @@ public class SolutionAnalyzerIntegrationTests
         => _diagrams!.Single(
             diagram => diagram.Components.Any(component => component.ComponentAlias == rootAlias));
 
-    private static GraphEdge Edge(string from, params string[] to) => new(from, to);
-
-    private static void AssertGraph(C4ComponentDiagram diagram, params GraphEdge[] edges)
+    private static void AssertGraph(C4ComponentDiagram diagram, GraphEdge[] edges)
     {
         var expectedNodes = new HashSet<string>();
         var expectedRelations = new HashSet<(string From, string To)>();
@@ -112,6 +141,23 @@ public class SolutionAnalyzerIntegrationTests
 
         CollectionAssert.AreEquivalent(expectedNodes, actualNodes);
         CollectionAssert.AreEquivalent(expectedRelations, actualRelations);
+    }
+
+    private static void AssertDescriptions(C4ComponentDiagram diagram, params (string Alias, string ExpectedDescription)[] expectations)
+    {
+        var descriptionByAlias = diagram.Components.ToDictionary(c => c.ComponentAlias, c => c.Description);
+
+        foreach (var (alias, expectedDescription) in expectations)
+        {
+            Assert.That(
+                descriptionByAlias.TryGetValue(alias, out var actualDescription),
+                $"{alias} не найден среди компонентов диаграммы.");
+
+            Assert.That(
+                actualDescription,
+                Is.EqualTo(expectedDescription),
+                $"Компонент '{alias}' должен иметь описание '{expectedDescription}', а получено '{actualDescription}'.");
+        }
     }
 
     private sealed record GraphEdge(string From, params string[] To);

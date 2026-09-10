@@ -49,7 +49,7 @@ public class PlantUmlGeneratorTests
                 new C4Component("ServiceB", "ServiceB", string.Empty),
             ],
             Relations: [
-                new C4Relation("ServiceA", "ServiceB", string.Empty),
+                new C4Relation("ServiceA", "ServiceB"),
             ]);
 
         var result = PlantUmlGenerator.Generate(ctx);
@@ -72,7 +72,7 @@ public class PlantUmlGeneratorTests
                 new C4Component("B", "B", string.Empty),
             ],
             Relations: [
-                new C4Relation("A", "B", string.Empty),
+                new C4Relation("A", "B"),
             ]);
 
         var result = PlantUmlGenerator.Generate(ctx);
@@ -104,7 +104,7 @@ public class PlantUmlGeneratorTests
     }
 
     [Test]
-    public void Generator_renders_relation_macro_with_description_and_technology()
+    public void Generator_renders_relation_macro_without_description()
     {
         var ctx = new C4ComponentDiagram(
             DiagramName: string.Empty,
@@ -113,12 +113,12 @@ public class PlantUmlGeneratorTests
                 new C4Component("B", "B", string.Empty),
             ],
             Relations: [
-                new C4Relation("A", "B", "calls"),
+                new C4Relation("A", "B"),
             ]);
 
         var result = PlantUmlGenerator.Generate(ctx);
 
-        Assert.That(result, Does.Contain("Rel(A, B, \"calls\")"));
+        Assert.That(result, Does.Contain("Rel(A, B, \"\")"));
     }
 
     private static int CountStringOccurrences(string text, string pattern)

@@ -4,7 +4,7 @@ using C4ModelBuilder.Models.Attributes;
 
 namespace C4ModelBuilder.Examples.Sample
 {
-    [C4Component]
+    [C4Component(Description = "User business logic")]
     public sealed class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;

@@ -4,7 +4,7 @@ using C4ModelBuilder.Models.Attributes;
 
 namespace C4ModelBuilder.Examples.Sample
 {
-    [C4Component]
+    [C4Component(Description = "CQRS handler for GetUsers query")]
     public sealed class GetUsersHandler : Rds.Cqrs.Queries.IQueryHandler<GetUsers, User[]>
     {
         private readonly IUserApplication _userApplication;

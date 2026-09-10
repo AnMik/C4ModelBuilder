@@ -18,4 +18,19 @@ internal static class C4ComponentAttributeExtensions
                 .GetC4ComponentAttribute()
                 ?.NamedArguments.Any(argument => argument is { Key: nameof(C4ComponentAttribute.IsRoot), Value.Value: true })
             == true;
+
+    public static string? GetC4ComponentDescription(this ISymbol? symbol)
+    {
+        var attribute = symbol.GetC4ComponentAttribute();
+        if (attribute == null)
+        {
+            return null;
+        }
+
+        return attribute
+            .NamedArguments
+            .Where(argument => argument is { Key: nameof(C4ComponentAttribute.Description) })
+            .Select(argument => argument.Value.Value?.ToString())
+            .FirstOrDefault();
+    }
 }
