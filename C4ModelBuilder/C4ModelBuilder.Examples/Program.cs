@@ -4,6 +4,7 @@ using C4ModelBuilder.PlantUmlCreator;
 
 Console.WriteLine("Started.");
 var sw = new Stopwatch();
+sw.Start();
 using var cancellationTokenSource = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => CancelToken(eventArgs, cancellationTokenSource);
 
@@ -17,7 +18,7 @@ catch (TaskCanceledException)
     return;
 }
 
-Console.WriteLine($"Finished ({sw.Elapsed.TotalSeconds}s).");
+Console.WriteLine($"Finished ({sw.Elapsed:mm\\:ss}).");
 return;
 
 async Task Run(CancellationTokenSource cts)
@@ -26,7 +27,8 @@ async Task Run(CancellationTokenSource cts)
     var solutionDirectory = GetCurrentSolutionPath();
     var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
 
-    var componentDiagrams = SolutionAnalyzer.AnalyzeComponents(solutionFilePath, maxDepth: 15, cts.Token);
+    var analyzer = new SolutionAnalyzer(solutionFilePath, maxDepth: 15);
+    var componentDiagrams = analyzer.AnalyzeComponents(cts.Token);
 
     var i = 1;
     await foreach (var componentDiagram in componentDiagrams)

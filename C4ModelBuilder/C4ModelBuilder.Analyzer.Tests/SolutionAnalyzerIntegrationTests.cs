@@ -13,8 +13,10 @@ public class SolutionAnalyzerIntegrationTests
     {
         RegisterMsBuild();
 
-        _diagrams = await SolutionAnalyzer
-            .AnalyzeComponents(GetCurrentSolutionPath(), maxDepth: 15, CancellationToken.None)
+        var analyzer = new SolutionAnalyzer(GetCurrentSolutionPath(), maxDepth: 15);
+
+        _diagrams = await analyzer
+            .AnalyzeComponents(CancellationToken.None)
             .ToListAsync(CancellationToken.None);
     }
 
@@ -67,8 +69,8 @@ public class SolutionAnalyzerIntegrationTests
     [Test]
     public async Task Analysis_depth_limits_how_deep_a_call_tree_is_expanded()
     {
-        var shallowDiagrams = await SolutionAnalyzer
-            .AnalyzeComponents(GetCurrentSolutionPath(), maxDepth: 1, CancellationToken.None)
+        var shallowDiagrams = await new SolutionAnalyzer(GetCurrentSolutionPath(), maxDepth: 1)
+            .AnalyzeComponents(CancellationToken.None)
             .ToListAsync(CancellationToken.None);
 
         var home = shallowDiagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));

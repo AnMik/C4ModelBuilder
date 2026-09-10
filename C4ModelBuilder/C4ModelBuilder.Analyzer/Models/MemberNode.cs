@@ -1,11 +1,11 @@
 ﻿namespace C4ModelBuilder.Analyzer.Models;
 
-internal sealed class MemberNode(string methodSignature)
+internal sealed class MemberNode(string name)
 {
     /// <summary>
-    /// Сигнатура метода (например, "AccountController.GetStoredPaymentCards(CancellationToken)")
+    /// Сигнатура узла (например, "AccountController" или "AccountController.GetStoredPaymentCards")
     /// </summary>
-    public string MethodSignature { get; } = methodSignature;
+    public string Name { get; } = name;
 
     /// <summary>
     /// Дочерние узлы — вызовы методов из текущего метода

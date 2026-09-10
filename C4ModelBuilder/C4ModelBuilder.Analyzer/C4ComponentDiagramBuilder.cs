@@ -27,7 +27,7 @@ internal static class C4ComponentDiagramBuilder
             ct.ThrowIfCancellationRequested();
 
             var node = stack.Pop();
-            var signature = node.MethodSignature;
+            var signature = node.Name;
 
             if (string.IsNullOrEmpty(signature))
             {
@@ -38,7 +38,7 @@ internal static class C4ComponentDiagramBuilder
 
             foreach (var child in node.Children)
             {
-                relations.Add((signature, child.MethodSignature));
+                relations.Add((signature, child.Name));
                 stack.Push(child);
             }
         }

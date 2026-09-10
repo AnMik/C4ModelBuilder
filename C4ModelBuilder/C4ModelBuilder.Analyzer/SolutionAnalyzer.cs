@@ -9,15 +9,10 @@ using Microsoft.CodeAnalysis.MSBuild;
 
 namespace C4ModelBuilder.Analyzer;
 
-public static class SolutionAnalyzer
+public sealed class SolutionAnalyzer(string solutionPath, int maxDepth)
 {
-    public static async IAsyncEnumerable<C4ComponentDiagram> AnalyzeComponents(
-        string solutionPath,
-        int maxDepth,
-        [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<C4ComponentDiagram> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
     {
-        ct.ThrowIfCancellationRequested();
-
         using var workspace = MSBuildWorkspace.Create();
         var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: ct);
 
