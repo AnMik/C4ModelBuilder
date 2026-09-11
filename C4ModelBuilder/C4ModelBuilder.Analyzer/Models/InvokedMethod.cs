@@ -11,19 +11,15 @@ internal sealed class InvokedMethod
 
     public string MethodName { get; }
 
-    public string? ClassDescription { get; }
-
-    public string? MethodDescription { get; }
-
     /// <summary>
     /// Признак того, что на типе/классе/интерфейсе проставлен атрибут <c>C4Component</c>.
     /// </summary>
-    public bool IsClassComponent { get; }
+    public string? ClassDescription { get; }
 
     /// <summary>
     /// Признак того, что на методе проставлен атрибут <c>C4Component</c>.
     /// </summary>
-    public bool IsMethodComponent { get; }
+    public string? MethodDescription { get; }
 
     private InvokedMethod(
         ClassMethod? classMethod,
@@ -35,10 +31,8 @@ internal sealed class InvokedMethod
         ClassMethod = classMethod;
         ClassName = classMethod?.ClassSyntax.Identifier.Text ?? className ?? throw new ArgumentNullException(nameof(className));
         MethodName = classMethod?.MethodSyntax.Identifier.Text ?? methodName ?? throw new ArgumentNullException(nameof(methodName));
-        ClassDescription = classSymbol.GetC4ComponentDescription();
-        MethodDescription = methodSymbol.GetC4ComponentDescription();
-        IsClassComponent = classSymbol.HasC4ComponentAttribute();
-        IsMethodComponent = methodSymbol.HasC4ComponentAttribute();
+        ClassDescription = classSymbol.GetC4ComponentAttribute().GetC4ComponentDescription();
+        MethodDescription = methodSymbol?.GetC4ComponentAttribute().GetC4ComponentDescription();
     }
 
     public static InvokedMethod From(ClassMethod classMethod, INamedTypeSymbol classSymbol, IMethodSymbol? methodSymbol)

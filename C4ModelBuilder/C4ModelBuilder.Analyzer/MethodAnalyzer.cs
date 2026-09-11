@@ -1,5 +1,6 @@
 ﻿using C4ModelBuilder.Analyzer.Infrastructure;
 using C4ModelBuilder.Analyzer.Models;
+using C4ModelBuilder.Models.Analysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -8,10 +9,7 @@ namespace C4ModelBuilder.Analyzer;
 
 internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<string, ClassMethod> rdsCqrsRequests, int maxDepth)
 {
-    public async Task<InvocationTree?> AnalyzeMethod(
-        ClassMethod classMethod,
-        int currentDepth,
-        CancellationToken ct = default)
+    public async Task<InvocationTree?> AnalyzeMethod(ClassMethod classMethod, int currentDepth, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -21,26 +19,25 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
         }
 
         var methodSemanticModel = parsedSolution.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree);
-        var methodSymbol = methodSemanticModel.GetDeclaredSymbol(classMethod.MethodSyntax);
 
         var currentMethodNode = new InvocationTree(
-            classMethod.Name,
-            isC4Component: methodSymbol.HasC4ComponentAttribute(),
-            description: methodSymbol.GetC4ComponentDescription());
+            nodeName: classMethod.Name,
+            c4ComponentDescription: methodSemanticModel
+                .GetDeclaredSymbol(classMethod.MethodSyntax)
+                ?.GetC4ComponentAttribute()
+                .GetC4ComponentDescription());
 
         foreach (var invokedMethod in GetInvokedMethods(classMethod, methodSemanticModel))
         {
             var invokedClassNode = new InvocationTree(
-                invokedMethod.ClassName,
-                isC4Component: invokedMethod.IsClassComponent,
-                description: invokedMethod.ClassDescription);
+                nodeName: invokedMethod.ClassName,
+                c4ComponentDescription: invokedMethod.ClassDescription);
 
             var invokedMethodNode = invokedMethod.ClassMethod != null
                 ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)
                 : new InvocationTree(
-                    $"{invokedMethod.ClassName}.{invokedMethod.MethodName}",
-                    isC4Component: invokedMethod.IsMethodComponent,
-                    description: invokedMethod.MethodDescription);
+                    nodeName: $"{invokedMethod.ClassName}.{invokedMethod.MethodName}",
+                    c4ComponentDescription: invokedMethod.MethodDescription);
 
             if (invokedMethodNode != null)
             {

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using C4ModelBuilder.Analyzer;
+using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.PlantUmlCreator;
 
 Console.WriteLine("Started.");
@@ -28,17 +29,37 @@ async Task Run(CancellationTokenSource cts)
     var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
 
     var solutionAnalyzer = await SolutionAnalyzer.Create(solutionFilePath, maxDepth: 15, cts.Token);
-    var componentDiagrams = solutionAnalyzer.AnalyzeComponents(cts.Token);
+    var invocationTrees = solutionAnalyzer.AnalyzeComponents(cts.Token);
 
-    await foreach (var componentDiagram in componentDiagrams)
+    await foreach (var invocationTree in invocationTrees)
     {
-        var plantUml = PlantUmlGenerator.Generate(componentDiagram);
+        WriteInvocationTree(invocationTree);
 
-        var path = Path.Combine(solutionDirectory.Parent!.FullName, "output", $"{componentDiagram.DiagramName}.puml");
+        var plantUml = PlantUmlGenerator.Generate(invocationTree);
+
+        var path = Path.Combine(solutionDirectory.Parent!.FullName, "output", $"{invocationTree.NodeName}.puml");
         await File.WriteAllTextAsync(path, plantUml);
         Console.WriteLine(path);
     }
 }
+
+static void WriteInvocationTree(InvocationTree node, int depth = 0)
+{
+    WriteLine(depth, node.NodeName);
+
+    if (node.Invocations.Count == 0)
+    {
+        WriteLine(depth + 1, "<Empty>");
+        return;
+    }
+
+    foreach (var child in node.Invocations)
+    {
+        WriteInvocationTree(child, depth + 1);
+    }
+}
+
+static void WriteLine(int depth, string text) => Console.WriteLine($"{new string(' ', depth * 3)}\u2514\u2500\u2500{text}");
 
 void CancelToken(ConsoleCancelEventArgs args, CancellationTokenSource cts)
 {

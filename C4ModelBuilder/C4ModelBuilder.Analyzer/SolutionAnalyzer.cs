@@ -32,17 +32,22 @@ public sealed class SolutionAnalyzer
         return new SolutionAnalyzer(parsedSolution, methodAnalyzer);
     }
 
-    public async IAsyncEnumerable<C4ComponentDiagram> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<InvocationTree> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
     {
-        var rootComponentClasses = _parsedSolution
+        var rootClasses = _parsedSolution
             .Projects
-            .SelectMany(x => x.Classes)
-            .Where(IsRootComponent);
+            .SelectMany(
+                x => x.Classes,
+                (_, @class) =>
+                    (ClassSyntax: @class.ClassDeclarationSyntax,
+                     ComponentAttribute: @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax)?.GetC4ComponentAttribute()))
+            .Where(x => x.ComponentAttribute.IsRootC4Component());
 
-        foreach (var @class in rootComponentClasses)
+        foreach (var (classSyntax, componentAttribute) in rootClasses)
         {
-            var classSyntax = @class.ClassDeclarationSyntax;
-            var rootNode = new InvocationTree(classSyntax.Identifier.Text, isC4Component: true, description: GetClassDescription(@class));
+            var rootNode = new InvocationTree(
+                nodeName: classSyntax.Identifier.Text,
+                c4ComponentDescription: componentAttribute.GetC4ComponentDescription());
 
             var publicMethods = classSyntax
                 .Members
@@ -60,21 +65,7 @@ public sealed class SolutionAnalyzer
                 }
             }
 
-            MemberNodeVisualizer.WriteToConsole(rootNode);
-
-            yield return C4ComponentDiagramBuilder.Build(rootNode);
+            yield return rootNode;
         }
     }
-
-    private static bool IsRootComponent(ParsedSolution.Project.Class @class)
-        => @class
-            .SemanticModel
-            .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
-            .IsRootComponent();
-
-    private static string? GetClassDescription(ParsedSolution.Project.Class @class)
-        => @class
-            .SemanticModel
-            .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
-            .GetC4ComponentDescription();
 }

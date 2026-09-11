@@ -1,32 +1,24 @@
 using C4ModelBuilder.Models.Analysis;
-using Microsoft.Build.Locator;
+using C4ModelBuilder.PlantUmlCreator;
 
 namespace C4ModelBuilder.Analyzer.Tests;
 
 [TestFixture]
 public class SolutionAnalyzerIntegrationTests
 {
-    private IReadOnlyCollection<C4ComponentDiagram>? _diagrams;
-
-    [OneTimeSetUp]
-    public async Task OneTimeSetUp()
-    {
-        RegisterMsBuild();
-
-        var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 15, CancellationToken.None);
-
-        _diagrams = await analyzer.AnalyzeComponents(CancellationToken.None).ToListAsync(CancellationToken.None);
-    }
+    private static readonly CancellationToken Ct = CancellationToken.None;
 
     [Test]
-    public void Home_controller_root_class_produces_expected_component_diagram()
+    public async Task Home_controller_root_class_produces_expected_component_diagram()
     {
-        Assert.That(_diagrams!.Count, Is.EqualTo(2));
+        var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 15, Ct);
+        var homeControllerTree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "HomeController").FirstAsync(Ct);
+        var diagram = PlantUmlGenerator.BuildComponentDiagram(homeControllerTree);
 
-        var home = DiagramByRootAlias("HomeController");
+        Assert.That(diagram.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
 
         AssertGraph(
-            home,
+            diagram,
             [
                 new GraphEdge("HomeController", "HomeController.GetUsersAsync"),
                 new GraphEdge("HomeController.GetUsersAsync", "UserApplication", "ISmsGateway", "GetUsersHandler"),
@@ -38,10 +30,8 @@ public class SolutionAnalyzerIntegrationTests
                 new GraphEdge("ISmsGateway", "ISmsGateway.SendAsync")
             ]);
 
-        Assert.That(home.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
-
         AssertDescriptions(
-            home,
+            diagram,
             ("HomeController", "Main page: list users and send welcome"),
             ("HomeController.GetUsersAsync", "Get users list with welcome message"),
             ("UserApplication", "User application use-case layer"),
@@ -55,12 +45,16 @@ public class SolutionAnalyzerIntegrationTests
     }
 
     [Test]
-    public void Admin_controller_root_class_produces_expected_component_diagram()
+    public async Task Admin_controller_root_class_produces_expected_component_diagram()
     {
-        var admin = DiagramByRootAlias("AdminController");
+        var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 15, Ct);
+        var adminControllerTree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "AdminController").FirstAsync(Ct);
+        var diagram = PlantUmlGenerator.BuildComponentDiagram(adminControllerTree);
+
+        Assert.That(diagram.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
 
         AssertGraph(
-            admin,
+            diagram,
             [
                 new GraphEdge("AdminController", "AdminController.SendPromoAsync"),
                 new GraphEdge("AdminController.SendPromoAsync", "UserApplication", "ISmsGateway"),
@@ -71,10 +65,8 @@ public class SolutionAnalyzerIntegrationTests
                 new GraphEdge("ISmsGateway", "ISmsGateway.SendAsync")
             ]);
 
-        Assert.That(admin.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
-
         AssertDescriptions(
-            admin,
+            diagram,
             ("AdminController", "Admin page: send promo campaigns"),
             ("AdminController.SendPromoAsync", "Send promo campaign via SMS"),
             ("UserApplication", "User application use-case layer"),
@@ -89,35 +81,19 @@ public class SolutionAnalyzerIntegrationTests
     [Test]
     public async Task Analysis_depth_limits_how_deep_a_call_tree_is_expanded()
     {
-        var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 1, CancellationToken.None);
+        var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 1, Ct);
 
-        var shallowDiagrams = await analyzer
-            .AnalyzeComponents(CancellationToken.None)
-            .ToListAsync(CancellationToken.None);
+        var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
+
+        var shallowDiagrams = trees.Select(PlantUmlGenerator.BuildComponentDiagram).ToList();
 
         var home = shallowDiagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));
         var componentAliases = home.Components.Select(component => component.ComponentAlias).ToHashSet();
 
-        Assert.That(componentAliases, Is.SupersetOf(new[]
-            {
-                "HomeController",
-                "UserApplication",
-                "GetUsersHandler",
-                "ISmsGateway",
-            }));
-
-        Assert.That(componentAliases.Intersect(
-            [
-                "UserService",
-                "UserRepository",
-                "UserDataSource",
-            ]), Is.Empty);
+        Assert.That(componentAliases, Is.SupersetOf(new[] { "HomeController", "UserApplication", "GetUsersHandler", "ISmsGateway", }));
+        Assert.That(componentAliases.Intersect(["UserService", "UserRepository", "UserDataSource",]), Is.Empty);
     }
 
-
-    private C4ComponentDiagram DiagramByRootAlias(string rootAlias)
-        => _diagrams!.Single(
-            diagram => diagram.Components.Any(component => component.ComponentAlias == rootAlias));
 
     private static void AssertGraph(C4ComponentDiagram diagram, GraphEdge[] edges)
     {
@@ -160,20 +136,6 @@ public class SolutionAnalyzerIntegrationTests
         }
     }
 
-    private sealed record GraphEdge(string From, params string[] To);
-
-    private static void RegisterMsBuild()
-    {
-        try
-        {
-            MSBuildLocator.RegisterDefaults();
-        }
-        catch (InvalidOperationException)
-        {
-            // MSBuild уже зарегистрирован.
-        }
-    }
-
     private static string GetCurrentSolutionPath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -192,4 +154,6 @@ public class SolutionAnalyzerIntegrationTests
 
         throw new DirectoryNotFoundException("Каталог решения C4ModelBuilder.sln не найден.");
     }
+
+    private sealed record GraphEdge(string From, params string[] To);
 }
