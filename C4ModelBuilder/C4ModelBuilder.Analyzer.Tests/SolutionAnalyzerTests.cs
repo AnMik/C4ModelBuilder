@@ -22,7 +22,7 @@ public class SolutionAnalyzerTests
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
         Assert.That(trees.Select(tree => tree.NodeName),
-            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController" }));
+            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController", "StatsController" }));
 
         var home = trees.Single(tree => tree.NodeName == "HomeController");
         Assert.That(NodeNames(home), Does.Contain("GetUsersHandler"));
@@ -106,8 +106,20 @@ public class SolutionAnalyzerTests
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
         Assert.That(trees.Select(tree => tree.NodeName),
-            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController" }));
+            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController", "StatsController" }));
         Assert.That(trees.All(tree => tree.Invocations.Count > 0), Is.True);
+    }
+
+    [Test]
+    public async Task AnalyzeComponents_falls_back_to_request_when_cqrs_handler_is_missing()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+
+        var stats = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "StatsController").FirstAsync(Ct);
+
+        AssertDescriptions(stats, ("GetStats", "Query without a handler"));
     }
 
     [Test]
@@ -379,6 +391,21 @@ public class SolutionAnalyzerTests
                 private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _cache = new();
 
                 public string Get(string key) => _cache.GetOrAdd(key, static k => k);
+            }
+
+            [C4Component(Description = "Query without a handler")]
+            public sealed class GetStats : Rds.Cqrs.IQuery
+            {
+            }
+
+            [C4Component(IsRoot = true, Description = "Controller with unresolved CQRS request")]
+            public sealed class StatsController
+            {
+                private readonly Rds.Cqrs.Queries.IQueryService _queryService;
+
+                public StatsController(Rds.Cqrs.Queries.IQueryService queryService) => _queryService = queryService;
+
+                public async Task GetStatsAsync(CancellationToken ct) => await _queryService.Ask(new GetStats(), ct);
             }
         }
         """;

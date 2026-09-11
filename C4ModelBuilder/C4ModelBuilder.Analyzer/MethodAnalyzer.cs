@@ -116,20 +116,35 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
                         .OfType<GenericNameSyntax>()
                         .Cast<SimpleNameSyntax>();
 
-                var queryName =
-                    baseRequest
+                var requestName = baseRequest
                         .Concat(genericRequest)
                         .Concat(genericRequestWithReadPreference)
                         .FirstOrDefault()
                         ?.Identifier.Text
-                    ?? string.Empty;
+                    ?? throw new InvalidOperationException($"Не удалось получить имя cqrs реквеста ({methodInvocation}).");
 
-                var handlerTypedSymbol = rdsCqrsRequests.GetValueOrDefault(queryName)
-                    ?? throw new InvalidOperationException($"Не найден cqrs хендлер для {queryName}.");
+                var handlerTypedSymbol = rdsCqrsRequests.GetValueOrDefault(requestName);
 
-                var (classSymbol, methodSymbol) = parsedSolution.GetDeclaredSymbols(handlerTypedSymbol);
+                if (handlerTypedSymbol == null)
+                {
+                    // Реализация CQRS-реквеста не найдена; добавляем сам реквест
+                    var requestSymbol = parsedSolution
+                        .Projects
+                        .SelectMany(x => x.Classes)
+                        .Select(x => x.SemanticModel.GetDeclaredSymbol(x.ClassDeclarationSyntax))
+                        .FirstOrDefault(symbol => symbol?.Name == requestName);
 
-                yield return InvokedMethod.From(handlerTypedSymbol, classSymbol, methodSymbol);
+                    if (requestSymbol != null)
+                    {
+                        yield return InvokedMethod.From(classSymbol: requestSymbol, methodSymbol: null);
+                    }
+                }
+                else
+                {
+                    var (classSymbol, methodSymbol) = parsedSolution.GetDeclaredSymbols(handlerTypedSymbol);
+
+                    yield return InvokedMethod.From(handlerTypedSymbol, classSymbol, methodSymbol);
+                }
             }
             else
             {
