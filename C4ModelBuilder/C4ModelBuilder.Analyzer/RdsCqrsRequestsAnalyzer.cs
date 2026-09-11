@@ -2,12 +2,16 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.Extensions.Logging;
 
 namespace C4ModelBuilder.Analyzer;
 
 internal static class RdsCqrsRequestsAnalyzer
 {
-    public static Dictionary<string, ClassMethod> Analyze(ParsedSolution parsedSolution, CancellationToken ct = default)
+    public static IReadOnlyDictionary<string, ClassMethod> Analyze(
+        ParsedSolution parsedSolution,
+        ILogger logger,
+        CancellationToken ct = default)
     {
         var requestHandlers = new Dictionary<string, ClassMethod>();
 
@@ -32,11 +36,20 @@ internal static class RdsCqrsRequestsAnalyzer
                 }
 
                 var cqrsHandlerMethod = @class
-                        .ClassDeclarationSyntax
-                        .Members
-                        .OfType<MethodDeclarationSyntax>()
-                        .FirstOrDefault(x => x.Identifier.Text == "HandleAsync")
-                    ?? throw new InvalidOperationException("В cqrs хендлере не найден метод HandleAsync().");
+                    .ClassDeclarationSyntax
+                    .Members
+                    .OfType<MethodDeclarationSyntax>()
+                    .FirstOrDefault(x => x.Identifier.Text == "HandleAsync");
+
+                if (cqrsHandlerMethod == null)
+                {
+                    logger.LogWarning(
+                        "CQRS-хендлер {handler} для {request} не содержит метод HandleAsync — класс пропущен.",
+                        @class.ClassDeclarationSyntax.Identifier.Text,
+                        cqrsRequestName);
+
+                    continue;
+                }
 
                 requestHandlers.TryAdd(cqrsRequestName, new ClassMethod(@class.ClassDeclarationSyntax, cqrsHandlerMethod));
 

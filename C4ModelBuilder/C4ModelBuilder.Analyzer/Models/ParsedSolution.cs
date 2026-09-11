@@ -19,8 +19,11 @@ internal sealed record ParsedSolution(IReadOnlyCollection<ParsedSolution.Project
     {
         var methodLocation = methodSymbol.Locations.FirstOrDefault(x => x.IsInSource);
 
-        var methodFilePath = methodLocation?.SourceTree?.FilePath
-            ?? throw new InvalidOperationException($"Не найден путь к файлу метода {methodSymbol}.");
+        // Метод не объявлен в исходниках (например, унаследован из framework-базы) — не найден.
+        if (methodLocation?.SourceTree?.FilePath is not { } methodFilePath)
+        {
+            return null;
+        }
 
         // Класс ищем по вхождению метода, т.к. в одном документе может быть несколько классов.
         var declaredClass = Projects
@@ -29,12 +32,9 @@ internal sealed record ParsedSolution(IReadOnlyCollection<ParsedSolution.Project
                 x => x.Document.FilePath == methodFilePath
                     && x.ClassDeclarationSyntax.Span.Contains(methodLocation.SourceSpan));
 
-        if (declaredClass?.SyntaxRootNode.FindNode(methodLocation.SourceSpan) is not MethodDeclarationSyntax methodSyntax)
-        {
-            return null;
-        }
-
-        return new(declaredClass.ClassDeclarationSyntax, methodSyntax);
+        return declaredClass?.SyntaxRootNode.FindNode(methodLocation.SourceSpan) is not MethodDeclarationSyntax methodSyntax
+            ? null
+            : new ClassMethod(declaredClass.ClassDeclarationSyntax, methodSyntax);
     }
 
     public SemanticModel GetSemanticModel(SyntaxTree syntaxTree)

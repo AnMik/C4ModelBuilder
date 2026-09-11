@@ -7,7 +7,11 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
 
-internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<string, ClassMethod> rdsCqrsRequests, int maxDepth)
+internal sealed class MethodAnalyzer(
+    ILogger logger,
+    ParsedSolution parsedSolution,
+    IReadOnlyDictionary<string, ClassMethod> rdsCqrsRequests,
+    int maxDepth)
 {
     public async Task<InvocationTree?> AnalyzeMethod(ClassMethod classMethod, int currentDepth, CancellationToken ct = default)
     {
@@ -15,6 +19,8 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
         if (currentDepth > maxDepth)
         {
+            logger.LogDebug("Вызов {method} пропущен: достигнут лимит глубины {maxDepth}.", classMethod.Name, maxDepth);
+
             return null;
         }
 
@@ -118,7 +124,10 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                 if (requestName == null)
                 {
-                    // todo: get query signature from local variable
+                    logger.LogWarning(
+                        "Не удалось определить имя CQRS-реквеста в вызове внутри {method} — вызов пропущен.",
+                        classMethod.Name);
+
                     continue;
                 }
 
@@ -133,10 +142,23 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
                     continue;
                 }
 
-                var requestSymbol = parsedSolution.GetAllSymbols().FirstOrDefault(symbol => symbol.Name == requestName)
-                    ?? throw new InvalidOperationException($"Не найден символ cqrs реквеста {requestName}.");
+                var requestSymbol = parsedSolution.GetAllSymbols().FirstOrDefault(symbol => symbol.Name == requestName);
 
-                // Обработчик cqrs реквеста не найден, добавляется реквест без обработчика.
+                if (requestSymbol == null)
+                {
+                    logger.LogWarning(
+                        "Не найден символ CQRS-реквеста {request} в вызове внутри {method} — вызов пропущен.",
+                        requestName,
+                        classMethod.Name);
+
+                    continue;
+                }
+
+                logger.LogWarning(
+                    "Не найден обработчик CQRS-реквеста {request} (вызов в {method}); реквест добавлен без обработчика.",
+                    requestName,
+                    classMethod.Name);
+
                 yield return InvokedMethod.From(classSymbol: requestSymbol, methodSymbol: null);
             }
             else
@@ -170,11 +192,23 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                         yield return InvokedMethod.From(methodClassMethod, classSymbol, methodSymbol);
                     }
+                    else
+                    {
+                        logger.LogDebug(
+                            "Вызов {call} внутри {method} не привязан к полю и метод не найден в классе — вызов пропущен.",
+                            methodInvocationSyntaxName,
+                            classMethod.Name);
+                    }
                 }
                 else
                 {
                     if (!parentClassFields.TryGetValue(fieldName, out var fieldTypeSymbol))
                     {
+                        logger.LogDebug(
+                            "Поле {field} в {method} пропущено: тип не является анализируемым классом/интерфейсом.",
+                            fieldName,
+                            classMethod.Name);
+
                         continue;
                     }
 
@@ -190,7 +224,10 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                             if (implementingClassSyntax == null)
                             {
-                                // Реализация интерфейса не найдена, добавляется интерфейс без реализации.
+                                logger.LogDebug(
+                                    "Для интерфейса {interface} не найдена реализация — добавлен интерфейс без реализации.",
+                                    fieldTypeSymbol.ToDisplayString());
+
                                 yield return InvokedMethod.From(
                                     classSymbol: fieldTypeSymbol,
                                     methodSymbol: methodSemanticModel.GetSymbolInfo(methodInvocation).Symbol as IMethodSymbol);
@@ -202,29 +239,55 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
 
                             if (methodSymbol == null)
                             {
+                                logger.LogWarning(
+                                    "Не найдена реализация метода вызова {call} в {method} — вызов пропущен.",
+                                    methodInvocation.ToString(),
+                                    classMethod.Name);
+
                                 continue;
                             }
 
                             var invokedMethodSyntax = parsedSolution.FindMethodDeclaration(methodSymbol);
 
-                            if (invokedMethodSyntax != null)
+                            if (invokedMethodSyntax == null)
                             {
-                                var (classSymbol, _) = parsedSolution.GetDeclaredSymbols(invokedMethodSyntax);
+                                logger.LogWarning(
+                                    "Не найдено объявление метода {method} в исходниках — вызов пропущен.",
+                                    methodSymbol.ToDisplayString());
 
-                                yield return InvokedMethod.From(invokedMethodSyntax, classSymbol, methodSymbol);
+                                break;
                             }
+
+                            var (classSymbol, _) = parsedSolution.GetDeclaredSymbols(invokedMethodSyntax);
+
+                            yield return InvokedMethod.From(invokedMethodSyntax, classSymbol, methodSymbol);
 
                             break;
                         }
                         case TypeKind.Class:
                         {
-                            var methodSymbol = methodSemanticModel.FindMethodImplementation(fieldTypeSymbol, methodInvocation)
-                                ?? throw new InvalidOperationException(
-                                    $"Не найден метод {methodSemanticModel} в классе {fieldTypeSymbol.ToDisplayString()}.");
+                            var methodSymbol = methodSemanticModel.FindMethodImplementation(fieldTypeSymbol, methodInvocation);
 
-                            var invokingClassMethod = parsedSolution.FindMethodDeclaration(methodSymbol)
-                                ?? throw new InvalidOperationException(
-                                    $"Не найден метод {methodSemanticModel} в классе {fieldTypeSymbol.ToDisplayString()}.");
+                            if (methodSymbol == null)
+                            {
+                                logger.LogWarning(
+                                    "Не найден метод вызова {call} в классе {class} — вызов пропущен.",
+                                    methodInvocation.ToString(),
+                                    fieldTypeSymbol.ToDisplayString());
+
+                                continue;
+                            }
+
+                            var invokingClassMethod = parsedSolution.FindMethodDeclaration(methodSymbol);
+
+                            if (invokingClassMethod == null)
+                            {
+                                logger.LogWarning(
+                                    "Не найдено объявление метода {method} в исходниках — вызов пропущен.",
+                                    methodSymbol.ToDisplayString());
+
+                                break;
+                            }
 
                             var (classSymbol, _) = parsedSolution.GetDeclaredSymbols(invokingClassMethod);
 
