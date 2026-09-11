@@ -55,4 +55,11 @@ internal sealed record ParsedSolution(IReadOnlyCollection<ParsedSolution.Project
             MethodSymbol: semanticModel.GetDeclaredSymbol(classMethod.MethodSyntax)
             ?? throw new InvalidOperationException($"Не найден символ метода {classMethod.MethodSyntax.Identifier.Text}."));
     }
+
+    public IEnumerable<Project.Class> GetAllClasses() => Projects.SelectMany(x => x.Classes);
+
+    public IEnumerable<INamedTypeSymbol> GetAllSymbols()
+        => GetAllClasses()
+           .Select(x => x.SemanticModel.GetDeclaredSymbol(x.ClassDeclarationSyntax))
+           .OfType<INamedTypeSymbol>();
 }

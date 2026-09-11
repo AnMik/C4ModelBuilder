@@ -18,7 +18,7 @@ internal static class RdsCqrsRequestsAnalyzer
 
         foreach (var cqrsRequestClass in cqrsRequestClasses)
         {
-            foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
+            foreach (var @class in parsedSolution.GetAllClasses())
             {
                 ct.ThrowIfCancellationRequested();
 

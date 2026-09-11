@@ -33,13 +33,15 @@ public sealed class SolutionAnalyzer
     public async IAsyncEnumerable<InvocationTree> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
     {
         var rootClasses = _parsedSolution
-            .Projects
-            .SelectMany(
-                x => x.Classes,
-                (_, @class) =>
-                    (ClassSyntax: @class.ClassDeclarationSyntax,
-                     ComponentAttribute: @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax)?.GetC4ComponentAttribute()))
-            .Where(x => x.ComponentAttribute.IsRootC4Component());
+                          .GetAllClasses()
+                          .Select(
+                              @class =>
+                                  (ClassSyntax: @class.ClassDeclarationSyntax,
+                                   ComponentAttribute: @class
+                                                       .SemanticModel
+                                                       .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
+                                                       ?.GetC4ComponentAttribute()))
+                          .Where(x => x.ComponentAttribute.IsRootC4Component());
 
         foreach (var (classSyntax, componentAttribute) in rootClasses)
         {
