@@ -5,7 +5,6 @@ using C4ModelBuilder.Models.Analysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.MSBuild;
 
 namespace C4ModelBuilder.Analyzer;
 
@@ -20,10 +19,9 @@ public sealed class SolutionAnalyzer
         _methodAnalyzer = methodAnalyzer;
     }
 
-    public static async Task<SolutionAnalyzer> Create(string solutionPath, int maxDepth, CancellationToken ct = default)
+    public static async Task<SolutionAnalyzer> Create(Solution solution, int maxDepth, CancellationToken ct = default)
     {
-        using var workspace = MSBuildWorkspace.Create();
-        var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: ct);
+        ArgumentNullException.ThrowIfNull(solution);
 
         var parsedSolution = await SolutionParser.Parse(solution, ct);
         var rdsCqrsRequests = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, ct);

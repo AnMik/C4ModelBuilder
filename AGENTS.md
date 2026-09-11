@@ -15,9 +15,12 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   не смешивать.
 - Атрибуты `C4*` — стабильный публичный контракт: имена, `AttributeUsage` и
   семантику без breaking-изменений не менять.
-- Публичный API генератора — двухэтапный: `SolutionAnalyzer.AnalyzeComponents()`
-  → `InvocationTree`, затем `PlantUmlGenerator.Generate(InvocationTree)` → текст
-  PlantUML (единственная публичная точка входа генератора).
+- Публичный API — двухэтапный: `SolutionAnalyzer.Create(Solution, maxDepth)` +
+  `AnalyzeComponents()` → `InvocationTree`, затем
+  `PlantUmlGenerator.Generate(InvocationTree)` → текст PlantUML (единственная
+  публичная точка входа генератора).
+- Анализатор принимает Roslyn-`Solution` и не выполняет I/O; открытие `.sln`
+  (`MSBuildWorkspace`) — на стороне вызывающего кода (`Examples`).
 - Анализатор (`SolutionAnalyzer`/`MethodAnalyzer`) строит и возвращает ПОЛНОЕ
   дерево вызовов (`InvocationTree`) на каждый root-класс и НЕ занимается
   рендером.
@@ -36,7 +39,7 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - Рендер (публичный фасад + internal-этапы):
   `C4ModelBuilder.PlantUmlCreator/{PlantUmlGenerator,PlantUmlRenderer,InvocationTreeMerger,C4ComponentDiagram}.cs`
 - Примеры/заглушки: `C4ModelBuilder.Examples/Sample/*.cs` и `RdsCqrsStubs.cs`
-- Тесты: `C4ModelBuilder.Analyzer.Tests/SolutionAnalyzerIntegrationTests.cs`,
+- Тесты: `C4ModelBuilder.Analyzer.Tests/SolutionAnalyzerTests.cs`,
   `C4ModelBuilder.PlantUmlCreator.Tests/{InvocationTreeMergerTests,PlantUmlRendererTests,PlantUmlGeneratorTests}.cs`
 - Конституция: `.specify/memory/constitution.md` (локальный, не в git)
 
@@ -50,8 +53,9 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 ## Сборка и тесты
 - Сборка: `dotnet build C4ModelBuilder/C4ModelBuilder.sln`
 - Тесты: `dotnet test C4ModelBuilder/C4ModelBuilder.sln`
-- NUnit. Интеграционные тесты анализатора используют `MSBuildWorkspace` и
-  разбирают сам солюшен; не зависят от путей/сети.
+- NUnit. Юнит-тесты анализатора собирают in-memory `Solution` (`AdhocWorkspace`)
+  и вызывают `SolutionAnalyzer.Create(Solution, ...)`; без `MSBuildWorkspace`,
+  путей и сети.
 
 ## Дисциплина тестирования и нейминг
 - Новое/изменённое поведение покрывать NUnit-тестами на наблюдаемый вывод

@@ -22,14 +22,19 @@ internal sealed record ParsedSolution(IReadOnlyCollection<ParsedSolution.Project
         var methodFilePath = methodLocation?.SourceTree?.FilePath
             ?? throw new InvalidOperationException($"Не найден путь к файлу метода {methodSymbol}.");
 
-        var document = Projects.SelectMany(x => x.Classes).FirstOrDefault(x => x.Document.FilePath == methodFilePath);
+        // Класс ищем по вхождению метода, т.к. в одном документе может быть несколько классов.
+        var declaredClass = Projects
+            .SelectMany(x => x.Classes)
+            .FirstOrDefault(
+                x => x.Document.FilePath == methodFilePath
+                    && x.ClassDeclarationSyntax.Span.Contains(methodLocation.SourceSpan));
 
-        if (document?.SyntaxRootNode.FindNode(methodLocation.SourceSpan) is not MethodDeclarationSyntax methodSyntax)
+        if (declaredClass?.SyntaxRootNode.FindNode(methodLocation.SourceSpan) is not MethodDeclarationSyntax methodSyntax)
         {
             return null;
         }
 
-        return new(document.ClassDeclarationSyntax, methodSyntax);
+        return new(declaredClass.ClassDeclarationSyntax, methodSyntax);
     }
 
     public SemanticModel GetSemanticModel(SyntaxTree syntaxTree)

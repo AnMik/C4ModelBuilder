@@ -2,6 +2,7 @@
 using C4ModelBuilder.Analyzer;
 using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.PlantUmlCreator;
+using Microsoft.CodeAnalysis.MSBuild;
 
 Console.WriteLine("Started.");
 var sw = new Stopwatch();
@@ -15,7 +16,7 @@ try
 }
 catch (TaskCanceledException)
 {
-    Console.WriteLine("Canceled.");
+    Console.WriteLine($"Canceled ({sw.Elapsed:mm\\:ss}).");
     return;
 }
 
@@ -24,11 +25,15 @@ return;
 
 async Task Run(CancellationTokenSource cts)
 {
+    var solutionFolder = GetCurrentSolutionFolderPath("C4ModelBuilder.sln");
+    var solutionFilePath = Path.Combine(solutionFolder.FullName, "C4ModelBuilder.sln");
     // var solutionFilePath = "C:\\Repos\\kassa\\Afisha.Tickets.All.sln";
-    var solutionDirectory = GetCurrentSolutionPath();
-    var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
+    var artifactsFolder = Path.Combine(solutionFolder.Parent!.FullName, "output");
 
-    var solutionAnalyzer = await SolutionAnalyzer.Create(solutionFilePath, maxDepth: 15, cts.Token);
+    using var workspace = MSBuildWorkspace.Create();
+    var solution = await workspace.OpenSolutionAsync(solutionFilePath, cancellationToken: cts.Token);
+
+    var solutionAnalyzer = await SolutionAnalyzer.Create(solution, maxDepth: 15, cts.Token);
     var invocationTrees = solutionAnalyzer.AnalyzeComponents(cts.Token);
 
     await foreach (var invocationTree in invocationTrees)
@@ -37,7 +42,7 @@ async Task Run(CancellationTokenSource cts)
 
         var plantUml = PlantUmlGenerator.Generate(invocationTree);
 
-        var path = Path.Combine(solutionDirectory.Parent!.FullName, "output", $"{invocationTree.NodeName}.puml");
+        var path = Path.Combine(artifactsFolder, $"{invocationTree.NodeName}.puml");
         await File.WriteAllTextAsync(path, plantUml);
         Console.WriteLine(path);
     }
@@ -74,13 +79,13 @@ void CancelToken(ConsoleCancelEventArgs args, CancellationTokenSource cts)
     }
 }
 
-static DirectoryInfo GetCurrentSolutionPath()
+static DirectoryInfo GetCurrentSolutionFolderPath(string solutionFileName)
 {
     var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
     while (directory != null)
     {
-        if (File.Exists(Path.Combine(directory.FullName, "C4ModelBuilder.sln")))
+        if (File.Exists(Path.Combine(directory.FullName, solutionFileName)))
         {
             return directory;
         }
@@ -88,5 +93,5 @@ static DirectoryInfo GetCurrentSolutionPath()
         directory = directory.Parent;
     }
 
-    throw new InvalidOperationException("Каталог решения C4ModelBuilder.sln не найден.");
+    throw new InvalidOperationException($"Каталог решения {solutionFileName} не найден.");
 }
