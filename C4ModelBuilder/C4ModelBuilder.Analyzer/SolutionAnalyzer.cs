@@ -42,7 +42,7 @@ public sealed class SolutionAnalyzer
     public async IAsyncEnumerable<InvocationTree> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
     {
         var rootClasses = _parsedSolution
-                          .GetAllClasses()
+                          .AllClasses
                           .Select(
                               @class =>
                                   (ClassSyntax: @class.ClassDeclarationSyntax,

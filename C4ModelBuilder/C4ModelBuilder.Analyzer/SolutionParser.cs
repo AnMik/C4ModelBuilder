@@ -8,13 +8,40 @@ namespace C4ModelBuilder.Analyzer;
 internal static class SolutionParser
 {
     public static async Task<ParsedSolution> Parse(Solution solution, CancellationToken ct = default)
-        => new(
-            await solution
-                .Projects
-                .Where(x => !x.Name.ContainsIgnoreCase("tests"))
-                .ToAsyncEnumerable()
-                .SelectAwait(async project => await ParseProject(project, ct))
-                .ToListAsync(ct));
+    {
+        var projects = await solution
+            .Projects
+            .Where(x => !x.Name.ContainsIgnoreCase("tests"))
+            .ToAsyncEnumerable()
+            .SelectAwait(async project => await ParseProject(project, ct))
+            .ToListAsync(ct);
+
+        return new ParsedSolution(projects, CreateSemanticModels(projects));
+    }
+
+    private static IReadOnlyDictionary<SyntaxTree, SemanticModel> CreateSemanticModels(
+        IReadOnlyCollection<ParsedSolution.Project> projects)
+    {
+        var semanticModels = new Dictionary<SyntaxTree, SemanticModel>();
+
+        foreach (var project in projects)
+        {
+            foreach (var syntaxTree in project.Compilation.SyntaxTrees)
+            {
+                // Синтаксическое дерево принадлежит ровно одному проекту солюшена — берём первое вхождение.
+                if (!semanticModels.ContainsKey(syntaxTree))
+                {
+                    semanticModels[syntaxTree] = project.Compilation.GetSemanticModel(syntaxTree);
+                }
+                else
+                {
+                    // todo: log
+                }
+            }
+        }
+
+        return semanticModels;
+    }
 
     private static async Task<ParsedSolution.Project> ParseProject(Project project, CancellationToken ct = default)
     {

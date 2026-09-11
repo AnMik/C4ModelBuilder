@@ -142,7 +142,7 @@ internal sealed class MethodAnalyzer(
                     continue;
                 }
 
-                var requestSymbol = parsedSolution.GetAllSymbols().FirstOrDefault(symbol => symbol.Name == requestName);
+                var requestSymbol = parsedSolution.AllSymbols.FirstOrDefault(symbol => symbol.Name == requestName);
 
                 if (requestSymbol == null)
                 {
@@ -217,7 +217,7 @@ internal sealed class MethodAnalyzer(
                         case TypeKind.Interface:
                         {
                             var implementingClassSyntax = parsedSolution
-                                                          .GetAllSymbols()
+                                                          .AllSymbols
                                                           .FirstOrDefault(
                                                               classSymbol => classSymbol.AllInterfaces.Any(
                                                                   x => x.ToDisplayString() == fieldTypeSymbol.ToDisplayString()));

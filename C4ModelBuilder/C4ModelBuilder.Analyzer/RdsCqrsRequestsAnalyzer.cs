@@ -15,7 +15,7 @@ internal static class RdsCqrsRequestsAnalyzer
         CancellationToken ct = default)
     {
         var cqrsRequestClassNames = parsedSolution
-                                    .GetAllClasses()
+                                    .AllClasses
                                     .Where(@class => IsCqrsRequest(@class.ClassDeclarationSyntax, @class.SemanticModel))
                                     .Select(@class => @class.ClassDeclarationSyntax.Identifier.Text);
 
@@ -28,7 +28,7 @@ internal static class RdsCqrsRequestsAnalyzer
 
         var requestHandlers = new Dictionary<string, ClassMethod>(requestNames.Count, StringComparer.Ordinal);
 
-        foreach (var @class in parsedSolution.GetAllClasses())
+        foreach (var @class in parsedSolution.AllClasses)
         {
             ct.ThrowIfCancellationRequested();
 
