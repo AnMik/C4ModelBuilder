@@ -2,35 +2,53 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.Logging;
 
 namespace C4ModelBuilder.Analyzer;
 
 internal static class RdsCqrsRequestsAnalyzer
 {
+    private const string HandleAsyncMethodName = "HandleAsync";
+
     public static IReadOnlyDictionary<string, ClassMethod> Analyze(
         ParsedSolution parsedSolution,
         ILogger logger,
         CancellationToken ct = default)
     {
-        var requestHandlers = new Dictionary<string, ClassMethod>();
+        var cqrsRequestClassNames = parsedSolution
+                                    .GetAllClasses()
+                                    .Where(@class => IsCqrsRequest(@class.ClassDeclarationSyntax, @class.SemanticModel))
+                                    .Select(@class => @class.ClassDeclarationSyntax.Identifier.Text);
 
-        var cqrsRequestClasses = parsedSolution
-            .Projects
-            .SelectMany(x => x.Classes)
-            .Where(@class => IsCqrsRequest(@class.ClassDeclarationSyntax, @class.SemanticModel));
+        var requestNames = new HashSet<string>(cqrsRequestClassNames, StringComparer.Ordinal);
 
-        foreach (var cqrsRequestClass in cqrsRequestClasses)
+        if (requestNames.Count == 0)
         {
-            foreach (var @class in parsedSolution.GetAllClasses())
+            return new Dictionary<string, ClassMethod>();
+        }
+
+        var requestHandlers = new Dictionary<string, ClassMethod>(requestNames.Count, StringComparer.Ordinal);
+
+        foreach (var @class in parsedSolution.GetAllClasses())
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (requestHandlers.Count == requestNames.Count)
             {
-                ct.ThrowIfCancellationRequested();
+                break;
+            }
 
-                var cqrsRequestName = cqrsRequestClass.ClassDeclarationSyntax.Identifier.Text;
+            if (@class.ClassDeclarationSyntax.BaseList is not { } baseList)
+            {
+                continue;
+            }
 
-                if (@class.ClassDeclarationSyntax.BaseList?.Types.Any(
-                        type => DoesImplementCqrsHandler(cqrsRequestName, type.Type, @class.SemanticModel))
-                    != true)
+            foreach (var baseType in baseList.Types)
+            {
+                var handledRequestName = TryGetRequestHandledName(baseType.Type, @class.SemanticModel);
+
+                if (handledRequestName == null
+                    || !requestNames.Contains(handledRequestName)
+                    || requestHandlers.ContainsKey(handledRequestName))
                 {
                     continue;
                 }
@@ -39,21 +57,27 @@ internal static class RdsCqrsRequestsAnalyzer
                     .ClassDeclarationSyntax
                     .Members
                     .OfType<MethodDeclarationSyntax>()
-                    .FirstOrDefault(x => x.Identifier.Text == "HandleAsync");
+                    .FirstOrDefault(x => x.Identifier.Text == HandleAsyncMethodName);
 
                 if (cqrsHandlerMethod == null)
                 {
                     logger.LogWarning(
                         "CQRS-хендлер {handler} для {request} не содержит метод HandleAsync — класс пропущен.",
                         @class.ClassDeclarationSyntax.Identifier.Text,
-                        cqrsRequestName);
+                        handledRequestName);
 
                     continue;
                 }
 
-                requestHandlers.TryAdd(cqrsRequestName, new ClassMethod(@class.ClassDeclarationSyntax, cqrsHandlerMethod));
+                var added = requestHandlers.TryAdd(handledRequestName, new ClassMethod(@class.ClassDeclarationSyntax, cqrsHandlerMethod));
 
-                break;
+                if (!added)
+                {
+                    logger.LogInformation(
+                        "CQRS-хендлер {handler} для {request} уже есть в словаре — класс пропущен.",
+                        @class.ClassDeclarationSyntax.Identifier.Text,
+                        handledRequestName);
+                }
             }
         }
 
@@ -65,11 +89,49 @@ internal static class RdsCqrsRequestsAnalyzer
             && @class.Modifiers.All(
                 syntaxToken => !syntaxToken.IsKind(SyntaxKind.StructKeyword) && !syntaxToken.IsKind(SyntaxKind.PrivateKeyword));
 
-    private static bool DoesImplementCqrsHandler(string requestName, TypeSyntax typeSyntax, SemanticModel semanticModel)
-        => semanticModel.GetTypeInfo(typeSyntax).Type is INamedTypeSymbol { IsGenericType: true } typeSymbol
-            && typeSymbol.OriginalDefinition.ToString()
-                is "Rds.Cqrs.Queries.IQueryHandler<TQuery, TResult>"
-                or "Rds.Cqrs.Commands.ICommandHandler<TCommand>"
-                or "Rds.Cqrs.Commands.IResultingCommandHandler<TCommand, TResult>"
-            && typeSymbol.TypeArguments.Any(argument => argument.Name == requestName);
+    private static string? TryGetRequestHandledName(TypeSyntax typeSyntax, SemanticModel semanticModel)
+    {
+        if (semanticModel.GetTypeInfo(typeSyntax).Type is not INamedTypeSymbol { IsGenericType: true } typeSymbol)
+        {
+            return null;
+        }
+
+        return IsCqrsHandler(typeSymbol.OriginalDefinition)
+            ? typeSymbol.TypeArguments.FirstOrDefault()?.Name
+            : null;
+    }
+
+    private static bool IsCqrsHandler(INamedTypeSymbol originalDefinition)
+    {
+        var containingNamespace = originalDefinition.ContainingNamespace;
+
+        return originalDefinition.Name switch
+        {
+            "IQueryHandler" => originalDefinition.Arity == 2 && IsCqrsNamespace(containingNamespace, "Queries"),
+            "ICommandHandler" => originalDefinition.Arity == 1 && IsCqrsNamespace(containingNamespace, "Commands"),
+            "IResultingCommandHandler" => originalDefinition.Arity == 2 && IsCqrsNamespace(containingNamespace, "Commands"),
+            _ => false,
+        };
+    }
+
+    private static bool IsCqrsNamespace(INamespaceSymbol? namespaceSymbol, string leaf)
+    {
+        if (namespaceSymbol is null || namespaceSymbol.Name != leaf)
+        {
+            return false;
+        }
+
+        var parentNamespace = namespaceSymbol.ContainingNamespace;
+        if (parentNamespace is null || parentNamespace.Name != "Cqrs")
+        {
+            return false;
+        }
+
+        return parentNamespace.ContainingNamespace is
+        {
+            IsGlobalNamespace: false,
+            Name: "Rds",
+            ContainingNamespace.IsGlobalNamespace: true
+        };
+    }
 }

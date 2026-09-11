@@ -134,7 +134,36 @@ public class SolutionAnalyzerTests
         Assert.That(NodeNames(cache), Is.EquivalentTo(new[] { "CacheController", "CacheController.Get" }));
     }
 
+    [Test]
+    public async Task Analyze_resolves_cqrs_handler_by_request_type_argument_not_result_type()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            CreateSolution(
+                workspace,
+                ("RdsCqrs.cs", RdsCqrsStubs),
+                ("Sample.cs", CqrsHandlerMatchingScenario)),
+            maxDepth: 15,
+            Ct);
+
+        var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
+
+        var fooTree = trees.Single(tree => tree.NodeName == "FooController");
+        Assert.That(NodeNames(fooTree), Does.Contain("FooHandler"));
+
+        var barTree = trees.Single(tree => tree.NodeName == "BarController");
+        Assert.That(NodeNames(barTree), Does.Not.Contain("FooHandler"));
+        Assert.That(NodeNames(barTree), Does.Contain("GetBar"));
+    }
+
     private static Solution CreateSampleSolution(AdhocWorkspace workspace)
+        => CreateSolution(
+            workspace,
+            ("RdsCqrs.cs", RdsCqrsStubs),
+            ("Sample.cs", SampleScenario));
+
+    private static Solution CreateSolution(AdhocWorkspace workspace, params (string FileName, string Source)[] documents)
     {
         var projectId = ProjectId.CreateNewId();
 
@@ -146,11 +175,7 @@ public class SolutionAnalyzerTests
             language: LanguageNames.CSharp,
             compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
             parseOptions: new CSharpParseOptions(LanguageVersion.Latest),
-            documents:
-            [
-                CreateDocumentInfo(projectId, "RdsCqrs.cs", RdsCqrsStubs),
-                CreateDocumentInfo(projectId, "Sample.cs", SampleScenario),
-            ],
+            documents: documents.Select(document => CreateDocumentInfo(projectId, document.FileName, document.Source)),
             metadataReferences: CreateMetadataReferences());
 
         workspace.AddProject(projectInfo);
@@ -406,6 +431,50 @@ public class SolutionAnalyzerTests
                 public StatsController(Rds.Cqrs.Queries.IQueryService queryService) => _queryService = queryService;
 
                 public async Task GetStatsAsync(CancellationToken ct) => await _queryService.Ask(new GetStats(), ct);
+            }
+        }
+        """;
+
+    private const string CqrsHandlerMatchingScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Models.Attributes;
+
+        namespace Sample
+        {
+            public sealed class GetFoo : Rds.Cqrs.IQuery
+            {
+            }
+
+            public sealed class GetBar : Rds.Cqrs.IQuery
+            {
+            }
+
+            [C4Component(Description = "Handler for GetFoo")]
+            public sealed class FooHandler : Rds.Cqrs.Queries.IQueryHandler<GetFoo, GetBar>
+            {
+                public Task<GetBar> HandleAsync(GetFoo query, CancellationToken ct) => Task.FromResult(new GetBar());
+            }
+
+            [C4Component(IsRoot = true, Description = "Root controller for GetFoo")]
+            public sealed class FooController
+            {
+                private readonly Rds.Cqrs.Queries.IQueryService _queryService;
+
+                public FooController(Rds.Cqrs.Queries.IQueryService queryService) => _queryService = queryService;
+
+                public async Task RunAsync(CancellationToken ct) => await _queryService.Ask(new GetFoo(), ct);
+            }
+
+            [C4Component(IsRoot = true, Description = "Root controller for GetBar")]
+            public sealed class BarController
+            {
+                private readonly Rds.Cqrs.Queries.IQueryService _queryService;
+
+                public BarController(Rds.Cqrs.Queries.IQueryService queryService) => _queryService = queryService;
+
+                public async Task RunAsync(CancellationToken ct) => await _queryService.Ask(new GetBar(), ct);
             }
         }
         """;
