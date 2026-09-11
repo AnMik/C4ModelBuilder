@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using C4ModelBuilder.Models.Analysis;
 
 namespace C4ModelBuilder.PlantUmlCreator;
@@ -8,6 +8,12 @@ namespace C4ModelBuilder.PlantUmlCreator;
 /// </summary>
 public static class PlantUmlGenerator
 {
+    public static string Generate(InvocationTree tree)
+    {
+        var componentDiagram = BuildComponentDiagram(tree);
+        return Generate(componentDiagram);
+    }
+
     /// <summary>
     /// Генерирует текст C4 Component PlantUML диаграммы.
     /// </summary>
@@ -101,11 +107,5 @@ public static class PlantUmlGenerator
                         FromComponentAlias: relation.From,
                         ToComponentAlias: relation.To))
                 .ToList());
-    }
-
-    public static string Generate(InvocationTree tree)
-    {
-        var componentDiagram = BuildComponentDiagram(tree);
-        return Generate(componentDiagram);
     }
 }

@@ -12,12 +12,14 @@ internal sealed class InvokedMethod
     public string MethodName { get; }
 
     /// <summary>
-    /// Признак того, что на типе/классе/интерфейсе проставлен атрибут <c>C4Component</c>.
+    /// Описание из атрибута <c>C4Component</c> (свойство <c>Description</c>) для типа/класса/интерфейса;
+    /// <c>null</c>, если атрибут не проставлен или описание не задано.
     /// </summary>
     public string? ClassDescription { get; }
 
     /// <summary>
-    /// Признак того, что на методе проставлен атрибут <c>C4Component</c>.
+    /// Описание из атрибута <c>C4Component</c> (свойство <c>Description</c>) для метода;
+    /// <c>null</c>, если атрибут не проставлен или описание не задано.
     /// </summary>
     public string? MethodDescription { get; }
 

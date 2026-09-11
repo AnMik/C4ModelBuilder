@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using C4ModelBuilder.Analyzer;
 using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.PlantUmlCreator;

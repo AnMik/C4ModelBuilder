@@ -1,4 +1,4 @@
-using C4ModelBuilder.Models.Analysis;
+﻿using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.PlantUmlCreator;
 
 namespace C4ModelBuilder.Analyzer.Tests;
