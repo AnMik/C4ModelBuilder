@@ -22,9 +22,9 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   дерево вызовов (`InvocationTree`) на каждый root-класс и НЕ занимается
   рендером.
 - Внутри `C4ModelBuilder.PlantUmlCreator` этапы разделены на internal-классы:
-  `C4ComponentDiagramBuilder` (схлопывание дерева в модель `C4ComponentDiagram`)
-  и `PlantUmlRenderer` (формирование текста). Модель `C4ComponentDiagram` —
-  internal-деталь генератора, не публичный контракт.
+  `InvocationTreeMerger.MergeToComponentDiagram` (схлопывание дерева в модель
+  `C4ComponentDiagram`) и `PlantUmlRenderer` (формирование текста). Модель
+  `C4ComponentDiagram` — internal-деталь генератора, не публичный контракт.
 - `PlantUmlGenerator.Generate` — чистая функция (дерево → текст), без I/O и
   глобального состояния; одинаковый вход → одинаковый выход.
 
@@ -34,10 +34,10 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - Анализ: `C4ModelBuilder.Analyzer/{SolutionAnalyzer,SolutionParser,MethodAnalyzer,RdsCqrsRequestsAnalyzer}.cs`
 - Инфраструктура: `C4ModelBuilder.Analyzer/Infrastructure/*.cs`
 - Рендер (публичный фасад + internal-этапы):
-  `C4ModelBuilder.PlantUmlCreator/{PlantUmlGenerator,PlantUmlRenderer,C4ComponentDiagramBuilder,C4ComponentDiagram}.cs`
+  `C4ModelBuilder.PlantUmlCreator/{PlantUmlGenerator,PlantUmlRenderer,InvocationTreeMerger,C4ComponentDiagram}.cs`
 - Примеры/заглушки: `C4ModelBuilder.Examples/Sample/*.cs` и `RdsCqrsStubs.cs`
 - Тесты: `C4ModelBuilder.Analyzer.Tests/SolutionAnalyzerIntegrationTests.cs`,
-  `C4ModelBuilder.PlantUmlCreator.Tests/{C4ComponentDiagramBuilderTests,PlantUmlRendererTests,PlantUmlGeneratorTests}.cs`
+  `C4ModelBuilder.PlantUmlCreator.Tests/{InvocationTreeMergerTests,PlantUmlRendererTests,PlantUmlGeneratorTests}.cs`
 - Конституция: `.specify/memory/constitution.md` (локальный, не в git)
 
 ## Технические ограничения
@@ -62,7 +62,7 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   «Test» и без жаргона, части через `_`, формат
   `<Что_тестируем>_<Сценарий>_<Ожидаемый_результат>`. Примеры:
   `Render_renders_two_components_and_one_relation`,
-  `Build_non_component_nodes_are_collapsed_into_relations_between_components`,
+  `Merge_non_component_nodes_are_collapsed_into_relations_between_components`,
   `Analysis_depth_limits_how_deep_a_call_tree_is_expanded`.
 
 ## Порядок работы при доработке

@@ -4,7 +4,7 @@ namespace C4ModelBuilder.PlantUmlCreator;
 
 /// <summary>
 /// Публичная точка входа генератора: строит PlantUML-диаграмму C4 Component из дерева вызовов.
-/// Внутренние этапы разделены на <see cref="C4ComponentDiagramBuilder"/> (схлопывание дерева
+/// Внутренние этапы разделены на <see cref="InvocationTreeMerger"/> (схлопывание дерева
 /// в модель диаграммы) и <see cref="PlantUmlRenderer"/> (формирование текста PlantUML).
 /// </summary>
 public static class PlantUmlGenerator
@@ -16,7 +16,7 @@ public static class PlantUmlGenerator
     {
         ArgumentNullException.ThrowIfNull(tree);
 
-        var componentDiagram = C4ComponentDiagramBuilder.Build(tree);
+        var componentDiagram = InvocationTreeMerger.MergeToComponentDiagram(tree);
 
         return PlantUmlRenderer.Render(componentDiagram);
     }

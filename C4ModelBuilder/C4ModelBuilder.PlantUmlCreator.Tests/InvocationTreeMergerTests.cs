@@ -3,22 +3,22 @@
 namespace C4ModelBuilder.PlantUmlCreator.Tests;
 
 [TestFixture]
-public class C4ComponentDiagramBuilderTests
+public class InvocationTreeMergerTests
 {
     [Test]
-    public void Build_only_component_nodes_become_components()
+    public void Merge_only_component_nodes_become_components()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: string.Empty);
         root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null));
         root.AddInvocation(new InvocationTree("HomeController.SendAsync", c4ComponentDescription: string.Empty));
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         AssertComponents(diagram, "HomeController", "HomeController.SendAsync");
     }
 
     [Test]
-    public void Build_non_component_nodes_are_collapsed_into_relations_between_components()
+    public void Merge_non_component_nodes_are_collapsed_into_relations_between_components()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: string.Empty);
         var method = new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null);
@@ -30,7 +30,7 @@ public class C4ComponentDiagramBuilderTests
         method.AddInvocation(userApp);
         root.AddInvocation(method);
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         AssertComponents(diagram, "HomeController", "UserApplication", "UserService");
         AssertRelations(
@@ -40,7 +40,7 @@ public class C4ComponentDiagramBuilderTests
     }
 
     [Test]
-    public void Build_method_calling_several_components_fans_out_into_several_relations()
+    public void Merge_method_calling_several_components_fans_out_into_several_relations()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: string.Empty);
         var method = new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null);
@@ -52,7 +52,7 @@ public class C4ComponentDiagramBuilderTests
         method.AddInvocation(smsGateway);
         root.AddInvocation(method);
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         AssertRelations(
             diagram,
@@ -61,7 +61,7 @@ public class C4ComponentDiagramBuilderTests
     }
 
     [Test]
-    public void Build_interface_without_implementation_is_added_as_component()
+    public void Merge_interface_without_implementation_is_added_as_component()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: string.Empty);
         var method = new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null);
@@ -70,13 +70,13 @@ public class C4ComponentDiagramBuilderTests
         method.AddInvocation(smsGateway);
         root.AddInvocation(method);
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         AssertComponents(diagram, "HomeController", "ISmsGateway");
     }
 
     [Test]
-    public void Build_duplicate_nodes_and_relations_are_deduplicated()
+    public void Merge_duplicate_nodes_and_relations_are_deduplicated()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: string.Empty);
         var method1 = new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null);
@@ -86,31 +86,31 @@ public class C4ComponentDiagramBuilderTests
         root.AddInvocation(method1);
         root.AddInvocation(method2);
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         AssertComponents(diagram, "HomeController", "UserApplication");
         AssertRelations(diagram, ("HomeController", "UserApplication"));
     }
 
     [Test]
-    public void Build_non_component_root_produces_no_relations()
+    public void Merge_non_component_root_produces_no_relations()
     {
         var root = new InvocationTree("HomeController.Foo", c4ComponentDescription: null);
         root.AddInvocation(new InvocationTree("UserApplication", c4ComponentDescription: string.Empty));
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         Assert.That(diagram.Components.Select(component => component.ComponentAlias), Does.Contain("UserApplication"));
         Assert.That(diagram.Relations, Is.Empty);
     }
 
     [Test]
-    public void Build_root_class_is_not_wrapped_by_a_pseudo_root_node()
+    public void Merge_root_class_is_not_wrapped_by_a_pseudo_root_node()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: string.Empty);
         root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null));
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         var aliases = diagram.Components.Select(component => component.ComponentAlias).ToHashSet();
         var sources = diagram.Relations.Select(relation => relation.FromComponentAlias).ToHashSet();
@@ -120,13 +120,13 @@ public class C4ComponentDiagramBuilderTests
     }
 
     [Test]
-    public void Build_component_description_is_preserved()
+    public void Merge_component_description_is_preserved()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: "Main controller");
         root.AddInvocation(new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null));
         root.AddInvocation(new InvocationTree("UserService", c4ComponentDescription: "User business logic"));
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         AssertComponents(diagram, "HomeController", "UserService");
 
@@ -138,18 +138,18 @@ public class C4ComponentDiagramBuilderTests
     }
 
     [Test]
-    public void Build_component_without_description_stores_empty_string()
+    public void Merge_component_without_description_stores_empty_string()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: string.Empty);
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         var component = diagram.Components.Single();
         Assert.That(component.Description, Is.EqualTo(string.Empty));
     }
 
     [Test]
-    public void Build_non_component_node_description_is_not_stored()
+    public void Merge_non_component_node_description_is_not_stored()
     {
         var root = new InvocationTree("HomeController", c4ComponentDescription: "Controller");
         var method = new InvocationTree("HomeController.GetUsersAsync", c4ComponentDescription: null);
@@ -157,7 +157,7 @@ public class C4ComponentDiagramBuilderTests
         method.AddInvocation(userApp);
         root.AddInvocation(method);
 
-        var diagram = C4ComponentDiagramBuilder.Build(root);
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
         AssertComponents(diagram, "HomeController", "UserApplication");
 

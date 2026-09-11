@@ -7,9 +7,9 @@ namespace C4ModelBuilder.PlantUmlCreator;
 /// узлы без атрибута C4Component пропускаются, а связи протягиваются между ближайшими
 /// компонентами-предками; дубликаты компонентов и связей устраняются.
 /// </summary>
-internal static class C4ComponentDiagramBuilder
+internal static class InvocationTreeMerger
 {
-    public static C4ComponentDiagram Build(InvocationTree root)
+    public static C4ComponentDiagram MergeToComponentDiagram(InvocationTree root)
     {
         ArgumentNullException.ThrowIfNull(root);
 
