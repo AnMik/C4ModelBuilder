@@ -61,17 +61,9 @@ internal sealed class MethodAnalyzer(ParsedSolution parsedSolution, Dictionary<s
                     x => (FieldName: x.Identifier.Text,
                           FieldType: (methodSemanticModel.GetDeclaredSymbol(x) as IFieldSymbol)?.Type as INamedTypeSymbol))
                 .Where(
-                    x => x.FieldType is
-                        {
-                            TypeKind: TypeKind.Class,
-                            MetadataToken: 0,
-                            Name: not "IMapper" and not "ITaggableCache"
-                        }
-                        or
-                        {
-                            TypeKind: TypeKind.Interface,
-                            Name: not "IMapper" and not "ITaggableCache"
-                        })
+                    x => x.FieldType is { TypeKind: TypeKind.Class or TypeKind.Interface } fieldType
+                        && fieldType.Name is not ("IMapper" or "ITaggableCache")
+                        && fieldType.OriginalDefinition.Locations.Any(location => location.IsInSource))
                 .ToDictionary(x => x.FieldName, x => x.FieldType!);
 
         foreach (var methodInvocation in classMethod.MethodSyntax.DescendantNodes().OfType<InvocationExpressionSyntax>())

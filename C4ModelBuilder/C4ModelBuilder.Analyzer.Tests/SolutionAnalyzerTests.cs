@@ -21,7 +21,8 @@ public class SolutionAnalyzerTests
 
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
-        Assert.That(trees.Select(tree => tree.NodeName), Is.EquivalentTo(new[] { "HomeController", "AdminController" }));
+        Assert.That(trees.Select(tree => tree.NodeName),
+            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController" }));
 
         var home = trees.Single(tree => tree.NodeName == "HomeController");
         Assert.That(NodeNames(home), Does.Contain("GetUsersHandler"));
@@ -104,8 +105,21 @@ public class SolutionAnalyzerTests
 
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
-        Assert.That(trees.Select(tree => tree.NodeName), Is.EquivalentTo(new[] { "HomeController", "AdminController" }));
+        Assert.That(trees.Select(tree => tree.NodeName),
+            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController" }));
         Assert.That(trees.All(tree => tree.Invocations.Count > 0), Is.True);
+    }
+
+    [Test]
+    public async Task AnalyzeComponents_skips_framework_type_fields_without_crashing()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+
+        var cache = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "CacheController").FirstAsync(Ct);
+
+        Assert.That(NodeNames(cache), Is.EquivalentTo(new[] { "CacheController", "CacheController.Get" }));
     }
 
     private static Solution CreateSampleSolution(AdhocWorkspace workspace)
@@ -357,6 +371,14 @@ public class SolutionAnalyzerTests
 
                     GC.KeepAlive(users);
                 }
+            }
+
+            [C4Component(IsRoot = true, Description = "Cache that uses a framework collection")]
+            public sealed class CacheController
+            {
+                private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _cache = new();
+
+                public string Get(string key) => _cache.GetOrAdd(key, static k => k);
             }
         }
         """;
