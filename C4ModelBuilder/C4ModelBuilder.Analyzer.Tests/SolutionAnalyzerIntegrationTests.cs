@@ -1,5 +1,4 @@
 ﻿using C4ModelBuilder.Models.Analysis;
-using C4ModelBuilder.PlantUmlCreator;
 
 namespace C4ModelBuilder.Analyzer.Tests;
 
@@ -9,29 +8,23 @@ public class SolutionAnalyzerIntegrationTests
     private static readonly CancellationToken Ct = CancellationToken.None;
 
     [Test]
-    public async Task Home_controller_root_class_produces_expected_component_diagram()
+    public async Task Home_controller_root_class_produces_expected_invocation_tree()
     {
         var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 15, Ct);
-        var homeControllerTree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "HomeController").FirstAsync(Ct);
-        var diagram = PlantUmlGenerator.BuildComponentDiagram(homeControllerTree);
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "HomeController").FirstAsync(Ct);
 
-        Assert.That(diagram.Components.Select(component => component.ComponentAlias), Does.Not.Contain("AdminController"));
+        var names = NodeNames(tree);
+        Assert.That(names, Does.Not.Contain("AdminController"));
+        Assert.That(names, Is.SupersetOf(new[] {
+            "HomeController", "HomeController.GetUsersAsync", "UserApplication", "UserService",
+            "UserRepository", "UserRepository.GetAll", "UserDataSource", "GetUsersHandler",
+            "ISmsGateway", "ISmsGateway.SendAsync" }));
 
-        AssertGraph(
-            diagram,
-            [
-                new GraphEdge("HomeController", "HomeController.GetUsersAsync"),
-                new GraphEdge("HomeController.GetUsersAsync", "UserApplication", "ISmsGateway", "GetUsersHandler"),
-                new GraphEdge("UserApplication", "UserService"),
-                new GraphEdge("UserService", "UserRepository"),
-                new GraphEdge("UserRepository", "UserRepository.GetAll"),
-                new GraphEdge("UserRepository.GetAll", "UserDataSource"),
-                new GraphEdge("GetUsersHandler", "UserApplication"),
-                new GraphEdge("ISmsGateway", "ISmsGateway.SendAsync")
-            ]);
+        var getUsersAsyncChildren = ChildNames(FindNode(tree, "HomeController.GetUsersAsync"));
+        Assert.That(getUsersAsyncChildren, Is.SupersetOf(new[] { "UserApplication", "ISmsGateway", "GetUsersHandler" }));
 
         AssertDescriptions(
-            diagram,
+            tree,
             ("HomeController", "Main page: list users and send welcome"),
             ("HomeController.GetUsersAsync", "Get users list with welcome message"),
             ("UserApplication", "User application use-case layer"),
@@ -45,28 +38,19 @@ public class SolutionAnalyzerIntegrationTests
     }
 
     [Test]
-    public async Task Admin_controller_root_class_produces_expected_component_diagram()
+    public async Task Admin_controller_root_class_produces_expected_invocation_tree()
     {
         var analyzer = await SolutionAnalyzer.Create(GetCurrentSolutionPath(), maxDepth: 15, Ct);
-        var adminControllerTree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "AdminController").FirstAsync(Ct);
-        var diagram = PlantUmlGenerator.BuildComponentDiagram(adminControllerTree);
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "AdminController").FirstAsync(Ct);
 
-        Assert.That(diagram.Components.Select(component => component.ComponentAlias), Does.Not.Contain("HomeController"));
-
-        AssertGraph(
-            diagram,
-            [
-                new GraphEdge("AdminController", "AdminController.SendPromoAsync"),
-                new GraphEdge("AdminController.SendPromoAsync", "UserApplication", "ISmsGateway"),
-                new GraphEdge("UserApplication", "UserService"),
-                new GraphEdge("UserService", "UserRepository"),
-                new GraphEdge("UserRepository", "UserRepository.GetAll"),
-                new GraphEdge("UserRepository.GetAll", "UserDataSource"),
-                new GraphEdge("ISmsGateway", "ISmsGateway.SendAsync")
-            ]);
+        var names = NodeNames(tree);
+        Assert.That(names, Does.Not.Contain("HomeController"));
+        Assert.That(names, Is.SupersetOf(new[] {
+            "AdminController", "AdminController.SendPromoAsync", "UserApplication", "UserService",
+            "UserRepository", "UserRepository.GetAll", "UserDataSource", "ISmsGateway", "ISmsGateway.SendAsync" }));
 
         AssertDescriptions(
-            diagram,
+            tree,
             ("AdminController", "Admin page: send promo campaigns"),
             ("AdminController.SendPromoAsync", "Send promo campaign via SMS"),
             ("UserApplication", "User application use-case layer"),
@@ -85,54 +69,51 @@ public class SolutionAnalyzerIntegrationTests
 
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
-        var shallowDiagrams = trees.Select(PlantUmlGenerator.BuildComponentDiagram).ToList();
+        var home = trees.Single(tree => tree.NodeName == "HomeController");
+        var names = NodeNames(home);
 
-        var home = shallowDiagrams.Single(diagram => diagram.Components.Any(component => component.ComponentAlias == "HomeController"));
-        var componentAliases = home.Components.Select(component => component.ComponentAlias).ToHashSet();
-
-        Assert.That(componentAliases, Is.SupersetOf(new[] { "HomeController", "UserApplication", "GetUsersHandler", "ISmsGateway", }));
-        Assert.That(componentAliases.Intersect(["UserService", "UserRepository", "UserDataSource",]), Is.Empty);
+        Assert.That(names, Is.SupersetOf(new[] { "HomeController", "UserApplication", "GetUsersHandler", "ISmsGateway" }));
+        Assert.That(names.Intersect(["UserService", "UserRepository", "UserDataSource"]), Is.Empty);
     }
 
-
-    private static void AssertGraph(C4ComponentDiagram diagram, GraphEdge[] edges)
+    private static IEnumerable<InvocationTree> Flatten(InvocationTree node)
     {
-        var expectedNodes = new HashSet<string>();
-        var expectedRelations = new HashSet<(string From, string To)>();
+        yield return node;
 
-        foreach (var edge in edges)
+        foreach (var child in node.Invocations)
         {
-            expectedNodes.Add(edge.From);
-            foreach (var to in edge.To)
+            foreach (var descendant in Flatten(child))
             {
-                expectedNodes.Add(to);
-                expectedRelations.Add((edge.From, to));
+                yield return descendant;
             }
         }
-
-        var actualNodes = diagram.Components.Select(component => component.ComponentAlias).ToHashSet();
-        var actualRelations = diagram.Relations
-            .Select(relation => (relation.FromComponentAlias, relation.ToComponentAlias))
-            .ToHashSet();
-
-        CollectionAssert.AreEquivalent(expectedNodes, actualNodes);
-        CollectionAssert.AreEquivalent(expectedRelations, actualRelations);
     }
 
-    private static void AssertDescriptions(C4ComponentDiagram diagram, params (string Alias, string ExpectedDescription)[] expectations)
-    {
-        var descriptionByAlias = diagram.Components.ToDictionary(c => c.ComponentAlias, c => c.Description);
+    private static HashSet<string> NodeNames(InvocationTree tree)
+        => Flatten(tree).Select(node => node.NodeName).ToHashSet();
 
-        foreach (var (alias, expectedDescription) in expectations)
+    private static InvocationTree FindNode(InvocationTree tree, string name)
+        => Flatten(tree).First(node => node.NodeName == name);
+
+    private static IEnumerable<string> ChildNames(InvocationTree node)
+        => node.Invocations.Select(child => child.NodeName);
+
+    private static void AssertDescriptions(InvocationTree tree, params (string Name, string ExpectedDescription)[] expectations)
+    {
+        var descriptionByName = Flatten(tree)
+            .GroupBy(node => node.NodeName)
+            .ToDictionary(group => group.Key, group => group.First().C4ComponentDescription);
+
+        foreach (var (name, expectedDescription) in expectations)
         {
             Assert.That(
-                descriptionByAlias.TryGetValue(alias, out var actualDescription),
-                $"{alias} не найден среди компонентов диаграммы.");
+                descriptionByName.TryGetValue(name, out var actualDescription),
+                $"{name} не найден в дереве вызовов.");
 
             Assert.That(
                 actualDescription,
                 Is.EqualTo(expectedDescription),
-                $"Компонент '{alias}' должен иметь описание '{expectedDescription}', а получено '{actualDescription}'.");
+                $"Узел '{name}' должен иметь описание '{expectedDescription}', а получено '{actualDescription}'.");
         }
     }
 
@@ -154,6 +135,4 @@ public class SolutionAnalyzerIntegrationTests
 
         throw new DirectoryNotFoundException("Каталог решения C4ModelBuilder.sln не найден.");
     }
-
-    private sealed record GraphEdge(string From, params string[] To);
 }

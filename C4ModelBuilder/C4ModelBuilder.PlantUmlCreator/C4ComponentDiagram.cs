@@ -1,11 +1,12 @@
-﻿namespace C4ModelBuilder.Models.Analysis;
+﻿namespace C4ModelBuilder.PlantUmlCreator;
 
 /// <summary>
-/// Контекст для построения C4 диаграммы: коллекция компонентов и связей между ними.
+/// Внутренняя модель диаграммы C4 Component: компоненты и связи между ними.
+/// Промежуточное представление между схлопыванием дерева вызовов и рендерингом PlantUML.
 /// </summary>
 /// <param name="Components">Компоненты (узлы) диаграммы.</param>
 /// <param name="Relations">Связи (рёбра) между компонентами.</param>
-public sealed record C4ComponentDiagram(
+internal sealed record C4ComponentDiagram(
     IReadOnlyCollection<C4ComponentDiagram.C4Component> Components,
     IReadOnlyCollection<C4ComponentDiagram.C4Relation> Relations)
 {

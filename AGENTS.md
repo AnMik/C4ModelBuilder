@@ -11,26 +11,33 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   `C4ModelBuilder.Models` ← (`C4ModelBuilder.Analyzer`, `C4ModelBuilder.PlantUmlCreator`).
 - `Analyzer` и `PlantUmlCreator` НЕ ссылаются друг на друга.
 - Данные между слоями передаются только через модели в
-  `C4ModelBuilder.Models/Analysis` (`InvocationTree`, `C4ComponentDiagram`,
-  `C4Component`, `C4Relation`). Логику анализа и рендера не смешивать.
+  `C4ModelBuilder.Models/Analysis` (`InvocationTree`). Логику анализа и рендера
+  не смешивать.
 - Атрибуты `C4*` — стабильный публичный контракт: имена, `AttributeUsage` и
   семантику без breaking-изменений не менять.
+- Публичный API генератора — двухэтапный: `SolutionAnalyzer.AnalyzeComponents()`
+  → `InvocationTree`, затем `PlantUmlGenerator.Generate(InvocationTree)` → текст
+  PlantUML (единственная публичная точка входа генератора).
 - Анализатор (`SolutionAnalyzer`/`MethodAnalyzer`) строит и возвращает ПОЛНОЕ
   дерево вызовов (`InvocationTree`) на каждый root-класс и НЕ занимается
-  рендером. Схлопывание узлов без атрибута в связи и дедупликацию
-  компонентов/связей выполняет `PlantUmlGenerator.BuildComponentDiagram`.
-- `PlantUmlGenerator.Generate` — чистая функция (текст → текст), без I/O и
+  рендером.
+- Внутри `C4ModelBuilder.PlantUmlCreator` этапы разделены на internal-классы:
+  `C4ComponentDiagramBuilder` (схлопывание дерева в модель `C4ComponentDiagram`)
+  и `PlantUmlRenderer` (формирование текста). Модель `C4ComponentDiagram` —
+  internal-деталь генератора, не публичный контракт.
+- `PlantUmlGenerator.Generate` — чистая функция (дерево → текст), без I/O и
   глобального состояния; одинаковый вход → одинаковый выход.
 
 ## Ключевые файлы
 - Атрибуты: `C4ModelBuilder.Models/Attributes/*.cs`
-- Модели: `C4ModelBuilder.Models/Analysis/{InvocationTree,C4ComponentDiagram}.cs`
+- Модели: `C4ModelBuilder.Models/Analysis/InvocationTree.cs`
 - Анализ: `C4ModelBuilder.Analyzer/{SolutionAnalyzer,SolutionParser,MethodAnalyzer,RdsCqrsRequestsAnalyzer}.cs`
 - Инфраструктура: `C4ModelBuilder.Analyzer/Infrastructure/*.cs`
-- Рендер: `C4ModelBuilder.PlantUmlCreator/PlantUmlGenerator.cs`
+- Рендер (публичный фасад + internal-этапы):
+  `C4ModelBuilder.PlantUmlCreator/{PlantUmlGenerator,PlantUmlRenderer,C4ComponentDiagramBuilder,C4ComponentDiagram}.cs`
 - Примеры/заглушки: `C4ModelBuilder.Examples/Sample/*.cs` и `RdsCqrsStubs.cs`
 - Тесты: `C4ModelBuilder.Analyzer.Tests/SolutionAnalyzerIntegrationTests.cs`,
-  `C4ModelBuilder.PlantUmlCreator.Tests/PlantUmlGeneratorTests.cs`
+  `C4ModelBuilder.PlantUmlCreator.Tests/{C4ComponentDiagramBuilderTests,PlantUmlRendererTests,PlantUmlGeneratorTests}.cs`
 - Конституция: `.specify/memory/constitution.md` (локальный, не в git)
 
 ## Технические ограничения
@@ -54,7 +61,7 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - Нейминг тестов (стиль Хорикова): человекочитаемое предложение без слова
   «Test» и без жаргона, части через `_`, формат
   `<Что_тестируем>_<Сценарий>_<Ожидаемый_результат>`. Примеры:
-  `Generator_renders_two_components_and_one_relation`,
+  `Render_renders_two_components_and_one_relation`,
   `Build_non_component_nodes_are_collapsed_into_relations_between_components`,
   `Analysis_depth_limits_how_deep_a_call_tree_is_expanded`.
 

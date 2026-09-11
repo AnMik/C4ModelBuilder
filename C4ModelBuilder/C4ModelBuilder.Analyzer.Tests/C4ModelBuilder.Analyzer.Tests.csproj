@@ -23,7 +23,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\C4ModelBuilder.Analyzer\C4ModelBuilder.Analyzer.csproj" />
-      <ProjectReference Include="..\C4ModelBuilder.PlantUmlCreator\C4ModelBuilder.PlantUmlCreator.csproj" />
     </ItemGroup>
 
 </Project>
