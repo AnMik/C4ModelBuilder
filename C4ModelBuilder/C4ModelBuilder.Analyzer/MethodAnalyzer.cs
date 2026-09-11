@@ -127,7 +127,6 @@ internal sealed class MethodAnalyzer(
                     logger.LogWarning(
                         "Не удалось определить имя CQRS-реквеста в вызове внутри {method} — вызов пропущен.",
                         classMethod.Name);
-
                     continue;
                 }
 
@@ -138,7 +137,6 @@ internal sealed class MethodAnalyzer(
                     var (classSymbol, methodSymbol) = parsedSolution.GetDeclaredSymbols(handlerTypedSymbol);
 
                     yield return InvokedMethod.From(handlerTypedSymbol, classSymbol, methodSymbol);
-
                     continue;
                 }
 
@@ -150,7 +148,6 @@ internal sealed class MethodAnalyzer(
                         "Не найден символ CQRS-реквеста {request} в вызове внутри {method} — вызов пропущен.",
                         requestName,
                         classMethod.Name);
-
                     continue;
                 }
 
@@ -208,7 +205,6 @@ internal sealed class MethodAnalyzer(
                             "Поле {field} в {method} пропущено: тип не является анализируемым классом/интерфейсом.",
                             fieldName,
                             classMethod.Name);
-
                         continue;
                     }
 
@@ -216,11 +212,8 @@ internal sealed class MethodAnalyzer(
                     {
                         case TypeKind.Interface:
                         {
-                            var implementingClassSyntax = parsedSolution
-                                                          .AllSymbols
-                                                          .FirstOrDefault(
-                                                              classSymbol => classSymbol.AllInterfaces.Any(
-                                                                  x => x.ToDisplayString() == fieldTypeSymbol.ToDisplayString()));
+                            var implementingClassSyntax = parsedSolution.AllSymbols.FirstOrDefault(
+                                @class => @class.AllInterfaces.Any(x => x.ToDisplayString() == fieldTypeSymbol.ToDisplayString()));
 
                             if (implementingClassSyntax == null)
                             {
@@ -231,7 +224,6 @@ internal sealed class MethodAnalyzer(
                                 yield return InvokedMethod.From(
                                     classSymbol: fieldTypeSymbol,
                                     methodSymbol: methodSemanticModel.GetSymbolInfo(methodInvocation).Symbol as IMethodSymbol);
-
                                 break;
                             }
 
@@ -261,7 +253,6 @@ internal sealed class MethodAnalyzer(
                             var (classSymbol, _) = parsedSolution.GetDeclaredSymbols(invokedMethodSyntax);
 
                             yield return InvokedMethod.From(invokedMethodSyntax, classSymbol, methodSymbol);
-
                             break;
                         }
                         case TypeKind.Class:
@@ -274,7 +265,6 @@ internal sealed class MethodAnalyzer(
                                     "Не найден метод вызова {call} в классе {class} — вызов пропущен.",
                                     methodInvocation.ToString(),
                                     fieldTypeSymbol.ToDisplayString());
-
                                 continue;
                             }
 
@@ -292,7 +282,6 @@ internal sealed class MethodAnalyzer(
                             var (classSymbol, _) = parsedSolution.GetDeclaredSymbols(invokingClassMethod);
 
                             yield return InvokedMethod.From(invokingClassMethod, classSymbol, methodSymbol);
-
                             break;
                         }
                         case TypeKind.Unknown:

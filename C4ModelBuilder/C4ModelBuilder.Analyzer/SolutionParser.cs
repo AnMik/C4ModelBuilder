@@ -10,11 +10,11 @@ internal static class SolutionParser
     public static async Task<ParsedSolution> Parse(Solution solution, CancellationToken ct = default)
     {
         var projects = await solution
-            .Projects
-            .Where(x => !x.Name.ContainsIgnoreCase("tests"))
-            .ToAsyncEnumerable()
-            .SelectAwait(async project => await ParseProject(project, ct))
-            .ToListAsync(ct);
+                             .Projects
+                             .Where(x => !x.Name.ContainsIgnoreCase("tests"))
+                             .ToAsyncEnumerable()
+                             .SelectAwait(async project => await ParseProject(project, ct))
+                             .ToListAsync(ct);
 
         return new ParsedSolution(projects, CreateSemanticModels(projects));
     }
@@ -60,15 +60,14 @@ internal static class SolutionParser
 
     private static async Task<IEnumerable<ParsedSolution.Project.Class>> ParseDocument(Document document, CancellationToken ct = default)
     {
-        var syntaxTree = await document.GetSyntaxTreeAsync(ct)
-            ?? throw new InvalidOperationException($"Не удалось получить синтаксическое дерево для документа {document.Name}.");
-        var syntaxRootNode = await syntaxTree.GetRootAsync(ct);
         var semanticModel = await document.GetSemanticModelAsync(ct)
             ?? throw new InvalidOperationException($"Не удалось получить семантическую модель для документа {document.Name}.");
+
+        var syntaxRootNode = await semanticModel.SyntaxTree.GetRootAsync(ct);
 
         return syntaxRootNode
             .DescendantNodes()
             .OfType<ClassDeclarationSyntax>()
-            .Select(x => new ParsedSolution.Project.Class(document, syntaxRootNode, semanticModel, x));
+            .Select(x => new ParsedSolution.Project.Class(semanticModel, x));
     }
 }

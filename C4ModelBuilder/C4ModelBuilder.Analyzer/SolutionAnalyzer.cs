@@ -44,12 +44,11 @@ public sealed class SolutionAnalyzer
         var rootClasses = _parsedSolution
                           .AllClasses
                           .Select(
-                              @class =>
-                                  (ClassSyntax: @class.ClassDeclarationSyntax,
-                                   ComponentAttribute: @class
-                                                       .SemanticModel
-                                                       .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
-                                                       ?.GetC4ComponentAttribute()))
+                              @class => (ClassSyntax: @class.ClassDeclarationSyntax,
+                                         ComponentAttribute: @class
+                                                             .SemanticModel
+                                                             .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
+                                                             ?.GetC4ComponentAttribute()))
                           .Where(x => x.ComponentAttribute.IsRootC4Component());
 
         foreach (var (classSyntax, componentAttribute) in rootClasses)

@@ -8,11 +8,7 @@ internal sealed record ParsedSolution
 {
     internal sealed record Project(Compilation Compilation, IReadOnlyCollection<Project.Class> Classes)
     {
-        public sealed record Class(
-            Document Document,
-            SyntaxNode SyntaxRootNode,
-            SemanticModel SemanticModel,
-            ClassDeclarationSyntax ClassDeclarationSyntax);
+        public sealed record Class(SemanticModel SemanticModel, ClassDeclarationSyntax ClassDeclarationSyntax);
     }
 
     private readonly IReadOnlyCollection<Project> _projects;
@@ -31,22 +27,18 @@ internal sealed record ParsedSolution
 
     public ClassMethod? FindMethodDeclaration(IMethodSymbol methodSymbol)
     {
-        var methodLocation = methodSymbol.Locations.FirstOrDefault(x => x.IsInSource);
-
-        // Метод не объявлен в исходниках (библиотечный).
-        if (methodLocation?.SourceTree?.FilePath is not { } methodFilePath)
+        // Метод не объявлен в исходниках (библиотечный) либо объявлен вне разобранного солюшена.
+        if (methodSymbol.DeclaringSyntaxReferences.FirstOrDefault() is not { } declaringSyntaxReference
+            || !_semanticModels.ContainsKey(declaringSyntaxReference.SyntaxTree))
         {
             return null;
         }
 
-        // Класс ищем по вхождению метода, т.к. в одном документе может быть несколько классов.
-        var declaredClass = AllClasses
-            .FirstOrDefault(
-                x => x.Document.FilePath == methodFilePath && x.ClassDeclarationSyntax.Span.Contains(methodLocation.SourceSpan));
-
-        return declaredClass?.SyntaxRootNode.FindNode(methodLocation.SourceSpan) is MethodDeclarationSyntax methodSyntax
-            ? new ClassMethod(declaredClass.ClassDeclarationSyntax, methodSyntax)
-            : null;
+        // Класс берём из объявления метода, т.к. в одном документе может быть несколько классов.
+        return declaringSyntaxReference.GetSyntax() is MethodDeclarationSyntax methodSyntax
+            && methodSyntax.FirstAncestorOrSelf<ClassDeclarationSyntax>() is { } classSyntax
+                ? new ClassMethod(classSyntax, methodSyntax)
+                : null;
     }
 
     public SemanticModel GetSemanticModel(SyntaxTree syntaxTree)

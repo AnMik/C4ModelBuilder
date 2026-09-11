@@ -157,6 +157,24 @@ public class SolutionAnalyzerTests
         Assert.That(NodeNames(barTree), Does.Contain("GetBar"));
     }
 
+    [Test]
+    public async Task Analysis_resolves_method_declared_in_nested_class()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            CreateSolution(workspace, ("Sample.cs", NestedWidgetScenario)),
+            maxDepth: 15,
+            Ct);
+
+        var widgetTree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "WidgetController").FirstAsync(Ct);
+
+        var names = NodeNames(widgetTree);
+        Assert.That(names, Does.Contain("Inner"));
+        Assert.That(names, Does.Contain("Inner.DoAsync"));
+        Assert.That(names, Does.Not.Contain("Outer"));
+    }
+
     private static Solution CreateSampleSolution(AdhocWorkspace workspace)
         => CreateSolution(
             workspace,
@@ -475,6 +493,39 @@ public class SolutionAnalyzerTests
                 public BarController(Rds.Cqrs.Queries.IQueryService queryService) => _queryService = queryService;
 
                 public async Task RunAsync(CancellationToken ct) => await _queryService.Ask(new GetBar(), ct);
+            }
+        }
+        """;
+
+    private const string NestedWidgetScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Models.Attributes;
+
+        namespace Sample
+        {
+            public interface IWidget
+            {
+                Task DoAsync(CancellationToken ct);
+            }
+
+            public sealed class Outer
+            {
+                public sealed class Inner : IWidget
+                {
+                    public Task DoAsync(CancellationToken ct) => Task.CompletedTask;
+                }
+            }
+
+            [C4Component(IsRoot = true, Description = "Root controller calling a nested widget")]
+            public sealed class WidgetController
+            {
+                private readonly IWidget _widget;
+
+                public WidgetController(IWidget widget) => _widget = widget;
+
+                public async Task RunAsync(CancellationToken ct) => await _widget.DoAsync(ct);
             }
         }
         """;
