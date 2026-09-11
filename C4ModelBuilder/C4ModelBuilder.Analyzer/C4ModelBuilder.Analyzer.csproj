@@ -17,4 +17,8 @@
       <ProjectReference Include="..\C4ModelBuilder.Models\C4ModelBuilder.Models.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <InternalsVisibleTo Include="C4ModelBuilder.Analyzer.Tests" />
+    </ItemGroup>
+
 </Project>

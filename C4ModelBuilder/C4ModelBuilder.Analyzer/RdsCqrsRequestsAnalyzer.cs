@@ -5,11 +5,12 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
 
-internal static class CqrsAnalyzer
+internal static class RdsCqrsRequestsAnalyzer
 {
-    public static IEnumerable<(string, ClassDeclarationSyntax, MethodDeclarationSyntax)> GetRequestHandlersMapping(
-        ParsedSolution parsedSolution)
+    public static Dictionary<string, ClassMethod> Analyze(ParsedSolution parsedSolution, CancellationToken ct = default)
     {
+        var requestHandlers = new Dictionary<string, ClassMethod>();
+
         var cqrsRequestClasses = parsedSolution
             .Projects
             .SelectMany(x => x.Classes)
@@ -19,6 +20,8 @@ internal static class CqrsAnalyzer
         {
             foreach (var @class in parsedSolution.Projects.SelectMany(x => x.Classes))
             {
+                ct.ThrowIfCancellationRequested();
+
                 var cqrsRequestName = cqrsRequestClass.ClassDeclarationSyntax.Identifier.Text;
 
                 if (@class.ClassDeclarationSyntax.BaseList?.Types.Any(
@@ -28,15 +31,20 @@ internal static class CqrsAnalyzer
                     continue;
                 }
 
-                var cqrsHandlerMethod = @class.ClassDeclarationSyntax.Members
-                    .OfType<MethodDeclarationSyntax>()
-                    .FirstOrDefault(x => x.Identifier.Text == "HandleAsync")
+                var cqrsHandlerMethod = @class
+                        .ClassDeclarationSyntax
+                        .Members
+                        .OfType<MethodDeclarationSyntax>()
+                        .FirstOrDefault(x => x.Identifier.Text == "HandleAsync")
                     ?? throw new InvalidOperationException("В cqrs хендлере не найден метод HandleAsync().");
 
-                yield return (cqrsRequestName, @class.ClassDeclarationSyntax, cqrsHandlerMethod);
+                requestHandlers.TryAdd(cqrsRequestName, new ClassMethod(@class.ClassDeclarationSyntax, cqrsHandlerMethod));
+
                 break;
             }
         }
+
+        return requestHandlers;
     }
 
     private static bool IsCqrsRequest(ClassDeclarationSyntax @class, SemanticModel semanticModel)

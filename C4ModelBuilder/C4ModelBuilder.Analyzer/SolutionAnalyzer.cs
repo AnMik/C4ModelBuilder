@@ -1,56 +1,71 @@
-﻿using C4ModelBuilder.Analyzer.Models;
-using C4ModelBuilder.Models;
+﻿using System.Runtime.CompilerServices;
+using C4ModelBuilder.Analyzer.Infrastructure;
+using C4ModelBuilder.Analyzer.Models;
+using C4ModelBuilder.Models.Analysis;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 
 namespace C4ModelBuilder.Analyzer;
 
-public static class SolutionAnalyzer
+public sealed class SolutionAnalyzer
 {
-    public static async Task<PlantUmlC4ComponentDiagram> Analyze(string solutionPath, int maxDepth = 15)
+    private readonly ParsedSolution _parsedSolution;
+    private readonly MethodAnalyzer _methodAnalyzer;
+
+    private SolutionAnalyzer(ParsedSolution parsedSolution, MethodAnalyzer methodAnalyzer)
+    {
+        _parsedSolution = parsedSolution;
+        _methodAnalyzer = methodAnalyzer;
+    }
+
+    public static async Task<SolutionAnalyzer> Create(string solutionPath, int maxDepth, CancellationToken ct = default)
     {
         using var workspace = MSBuildWorkspace.Create();
-        var solution = await workspace.OpenSolutionAsync(solutionPath);
+        var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: ct);
 
-        var parsedSolution = await SolutionParser.Parse(solution);
-        var requestHandlersMapping = CqrsAnalyzer
-            .GetRequestHandlersMapping(parsedSolution)
-            .GroupBy(x => x.Item1, (x, y) => (x, y.First().Item2, y.First().Item3))
-            .ToDictionary(x => x.x, x => (x.Item2, x.Item3));
+        var parsedSolution = await SolutionParser.Parse(solution, ct);
+        var rdsCqrsRequests = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, ct);
+        var methodAnalyzer = new MethodAnalyzer(parsedSolution, rdsCqrsRequests, maxDepth);
 
-        var componentAttributeName = nameof(C4ComponentAttribute)[..^(nameof(Attribute).Length)];
+        return new SolutionAnalyzer(parsedSolution, methodAnalyzer);
+    }
 
-        var methodAnalyzer = new MethodAnalyzer(parsedSolution, requestHandlersMapping, maxDepth);
+    public async IAsyncEnumerable<InvocationTree> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var rootClasses = _parsedSolution
+            .Projects
+            .SelectMany(
+                x => x.Classes,
+                (_, @class) =>
+                    (ClassSyntax: @class.ClassDeclarationSyntax,
+                     ComponentAttribute: @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax)?.GetC4ComponentAttribute()))
+            .Where(x => x.ComponentAttribute.IsRootC4Component());
 
-        var memberNode = new MemberNode("Root");
-
-        foreach (var doc in parsedSolution.Projects.SelectMany(x => x.Classes))
+        foreach (var (classSyntax, componentAttribute) in rootClasses)
         {
-            var @class = doc.ClassDeclarationSyntax;
+            var rootNode = new InvocationTree(
+                nodeName: classSyntax.Identifier.Text,
+                c4ComponentDescription: componentAttribute.GetC4ComponentDescription());
 
-            var mapiMethodsWithAttribute = @class
+            var publicMethods = classSyntax
                 .Members
                 .OfType<MethodDeclarationSyntax>()
-                .Where(
-                    method => method
-                        .AttributeLists
-                        .SelectMany(attributeList => attributeList.Attributes)
-                        .Any(attribute => attribute.Name.ToString() == componentAttributeName));
+                .Where(method => method.Modifiers.Any(SyntaxKind.PublicKeyword));
 
-            foreach (var method in mapiMethodsWithAttribute)
+            foreach (var publicMethod in publicMethods)
             {
-                var node = await methodAnalyzer.AnalyzeMethod(@class, method, currentDepth: 0);
-                if (node != null)
+                var invokedMethodNode =
+                    await _methodAnalyzer.AnalyzeMethod(new ClassMethod(classSyntax, publicMethod), currentDepth: 0, ct);
+
+                if (invokedMethodNode != null)
                 {
-                    memberNode.AddChild(node);
+                    rootNode.AddInvocation(invokedMethodNode);
                 }
             }
+
+            yield return rootNode;
         }
-
-        var plantUmlContext = PlantUmlContextBuilder.Build(memberNode);
-
-        MethodAnalyzer.WriteHierarchy(memberNode);
-
-        return plantUmlContext;
     }
 }

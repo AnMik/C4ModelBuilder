@@ -16,9 +16,11 @@ internal static class SolutionParser
                 .SelectAwait(async project => await ParseProject(project, ct))
                 .ToListAsync(ct));
 
-    private static async Task<ParsedProject> ParseProject(Project project, CancellationToken ct = default)
+    private static async Task<ParsedSolution.Project> ParseProject(Project project, CancellationToken ct = default)
     {
-        var compilation = await project.GetCompilationAsync(ct) ?? throw new InvalidOperationException("compilation");
+        var compilation = await project.GetCompilationAsync(ct)
+            ?? throw new InvalidOperationException("Не удалось получить объект compilation.");
+
         var classes = await project
             .Documents
             .ToAsyncEnumerable()
@@ -26,20 +28,20 @@ internal static class SolutionParser
             .SelectMany(x => x.ToAsyncEnumerable())
             .ToListAsync(ct);
 
-        return new ParsedProject(compilation, classes);
+        return new ParsedSolution.Project(compilation, classes);
     }
 
-    private static async Task<IEnumerable<ParsedProject.Class>> ParseDocument(Document document, CancellationToken ct = default)
+    private static async Task<IEnumerable<ParsedSolution.Project.Class>> ParseDocument(Document document, CancellationToken ct = default)
     {
         var syntaxTree = await document.GetSyntaxTreeAsync(ct)
-            ?? throw new InvalidOperationException($"Не удалось получить синтаксическое дерево для документа {document.Name}");
+            ?? throw new InvalidOperationException($"Не удалось получить синтаксическое дерево для документа {document.Name}.");
         var syntaxRootNode = await syntaxTree.GetRootAsync(ct);
         var semanticModel = await document.GetSemanticModelAsync(ct)
-            ?? throw new InvalidOperationException($"Не удалось получить семантическую модель для документа {document.Name}");
+            ?? throw new InvalidOperationException($"Не удалось получить семантическую модель для документа {document.Name}.");
 
         return syntaxRootNode
             .DescendantNodes()
             .OfType<ClassDeclarationSyntax>()
-            .Select(x => new ParsedProject.Class(document, syntaxRootNode, semanticModel, x));
+            .Select(x => new ParsedSolution.Project.Class(document, syntaxRootNode, semanticModel, x));
     }
 }

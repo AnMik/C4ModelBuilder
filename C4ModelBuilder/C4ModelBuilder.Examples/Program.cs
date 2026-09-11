@@ -1,33 +1,92 @@
+using System.Diagnostics;
 using C4ModelBuilder.Analyzer;
-using C4ModelBuilder.Models;
+using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.PlantUmlCreator;
 
-var solutionFilePath = "C:\\Repos\\kassa\\Afisha.Tickets.All.sln";
+Console.WriteLine("Started.");
+var sw = new Stopwatch();
+sw.Start();
+using var cancellationTokenSource = new CancellationTokenSource();
+Console.CancelKeyPress += (_, eventArgs) => CancelToken(eventArgs, cancellationTokenSource);
 
-//var ctx = await SolutionAnalyzer.Analyze(solutionFilePath);
+try
+{
+    await Run(cancellationTokenSource);
+}
+catch (TaskCanceledException)
+{
+    Console.WriteLine("Canceled.");
+    return;
+}
 
-var ctx = new PlantUmlC4ComponentDiagram(
-    Components:
-    [
-        new C4Component("AccountController", "AccountController", null, null),
-        new C4Component("WebUserContext", "WebUserContext", null, null),
-        new C4Component("PaymentSystemProvider", "PaymentSystemProvider", null, null),
-        new C4Component("CacheKeyBuilder", "CacheKeyBuilder", null, null),
-        new C4Component("GetObjectWithLinksHandler", "GetObjectWithLinksHandler", null, null),
-        new C4Component("MetadataObjectRepositoryResolver", "MetadataObjectRepositoryResolver", null, null),
-        new C4Component("ClassID", "ClassID", null, null),
-    ],
-    Relations:
-    [
-        new C4Relation("AccountController", "WebUserContext"),
-        new C4Relation("AccountController", "PaymentSystemProvider"),
-        new C4Relation("PaymentSystemProvider", "CacheKeyBuilder"),
-        new C4Relation("PaymentSystemProvider", "GetObjectWithLinksHandler"),
-        new C4Relation("GetObjectWithLinksHandler", "MetadataObjectRepositoryResolver"),
-        new C4Relation("GetObjectWithLinksHandler", "ClassID"),
-    ]);
+Console.WriteLine($"Finished ({sw.Elapsed:mm\\:ss}).");
+return;
 
-var diagram = PlantUmlGenerator.Generate(ctx);
-Console.WriteLine(diagram);
+async Task Run(CancellationTokenSource cts)
+{
+    // var solutionFilePath = "C:\\Repos\\kassa\\Afisha.Tickets.All.sln";
+    var solutionDirectory = GetCurrentSolutionPath();
+    var solutionFilePath = Path.Combine(solutionDirectory.FullName, "C4ModelBuilder.sln");
 
-await File.WriteAllTextAsync("C:\\Users\\a.mikryukov\\Desktop\\uml.puml", diagram);
+    var solutionAnalyzer = await SolutionAnalyzer.Create(solutionFilePath, maxDepth: 15, cts.Token);
+    var invocationTrees = solutionAnalyzer.AnalyzeComponents(cts.Token);
+
+    await foreach (var invocationTree in invocationTrees)
+    {
+        WriteInvocationTree(invocationTree);
+
+        var plantUml = PlantUmlGenerator.Generate(invocationTree);
+
+        var path = Path.Combine(solutionDirectory.Parent!.FullName, "output", $"{invocationTree.NodeName}.puml");
+        await File.WriteAllTextAsync(path, plantUml);
+        Console.WriteLine(path);
+    }
+}
+
+static void WriteInvocationTree(InvocationTree node, int depth = 0)
+{
+    WriteLine(depth, node.NodeName);
+
+    if (node.Invocations.Count == 0)
+    {
+        WriteLine(depth + 1, "<Empty>");
+        return;
+    }
+
+    foreach (var child in node.Invocations)
+    {
+        WriteInvocationTree(child, depth + 1);
+    }
+}
+
+static void WriteLine(int depth, string text) => Console.WriteLine($"{new string(' ', depth * 3)}\u2514\u2500\u2500{text}");
+
+void CancelToken(ConsoleCancelEventArgs args, CancellationTokenSource cts)
+{
+    args.Cancel = true;
+    try
+    {
+        cts.Cancel();
+    }
+    catch (ObjectDisposedException)
+    {
+        // ignore
+    }
+}
+
+static DirectoryInfo GetCurrentSolutionPath()
+{
+    var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+    while (directory != null)
+    {
+        if (File.Exists(Path.Combine(directory.FullName, "C4ModelBuilder.sln")))
+        {
+            return directory;
+        }
+
+        directory = directory.Parent;
+    }
+
+    throw new InvalidOperationException("Каталог решения C4ModelBuilder.sln не найден.");
+}
