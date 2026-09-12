@@ -212,10 +212,9 @@ internal sealed class MethodAnalyzer(
                     {
                         case TypeKind.Interface:
                         {
-                            var implementingClassSyntax = parsedSolution.AllSymbols.FirstOrDefault(
-                                @class => @class.AllInterfaces.Any(x => x.ToDisplayString() == fieldTypeSymbol.ToDisplayString()));
+                            var implementingClass = parsedSolution.FindInterfaceImplementation(fieldTypeSymbol);
 
-                            if (implementingClassSyntax == null)
+                            if (implementingClass == null)
                             {
                                 logger.LogDebug(
                                     "Для интерфейса {interface} не найдена реализация — добавлен интерфейс без реализации.",
@@ -227,7 +226,7 @@ internal sealed class MethodAnalyzer(
                                 break;
                             }
 
-                            var methodSymbol = methodSemanticModel.FindMethodImplementation(implementingClassSyntax, methodInvocation);
+                            var methodSymbol = methodSemanticModel.FindMethodImplementation(implementingClass, methodInvocation);
 
                             if (methodSymbol == null)
                             {

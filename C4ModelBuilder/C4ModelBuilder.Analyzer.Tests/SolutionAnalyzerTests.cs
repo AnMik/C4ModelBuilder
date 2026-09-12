@@ -175,6 +175,82 @@ public class SolutionAnalyzerTests
         Assert.That(names, Does.Not.Contain("Outer"));
     }
 
+    [Test]
+    public async Task Analysis_resolves_field_interface_to_first_implementation_in_solution_order()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            CreateSolution(workspace, ("Sample.cs", InterfaceImplementationScenario)),
+            maxDepth: 15,
+            Ct);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "NotifyController").FirstAsync(Ct);
+
+        var nodes = Flatten(tree)
+                    .Select(node => $"{node.NodeName}|{node.C4ComponentDescription ?? "<null>"}")
+                    .ToList();
+
+        Assert.That(nodes, Is.EqualTo(new[]
+        {
+            "NotifyController|Root controller notifying",
+            "NotifyController.RunAsync|<null>",
+            "FirstNotifier|First notifier implementation",
+            "FirstNotifier.NotifyAsync|<null>",
+        }));
+    }
+
+    [Test]
+    public async Task Analysis_resolves_interface_to_implementation_of_derived_interface()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            CreateSolution(workspace, ("Sample.cs", DerivedInterfaceScenario)),
+            maxDepth: 15,
+            Ct);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "BaseNotifyController").FirstAsync(Ct);
+
+        var names = NodeNames(tree);
+
+        Assert.That(names, Is.SupersetOf(new[] { "EmailNotifier", "EmailNotifier.NotifyAsync" }));
+        Assert.That(names, Does.Not.Contain("INotifier"));
+    }
+
+    [Test]
+    public async Task Analysis_keeps_interface_node_when_no_implementation_exists()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            CreateSolution(workspace, ("Sample.cs", UnresolvedInterfaceScenario)),
+            maxDepth: 15,
+            Ct);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "OrphanNotifyController").FirstAsync(Ct);
+
+        Assert.That(NodeNames(tree), Is.SupersetOf(new[] { "INotifier", "INotifier.NotifyAsync" }));
+    }
+
+    [Test]
+    public async Task Analysis_matches_field_interface_by_full_name_not_by_short_name()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            CreateSolution(workspace, ("Sample.cs", SameNamedInterfacesScenario)),
+            maxDepth: 15,
+            Ct);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "BetaNotifyController").FirstAsync(Ct);
+
+        var names = NodeNames(tree);
+
+        Assert.That(names, Does.Contain("BetaNotifier"));
+        Assert.That(names, Does.Not.Contain("AlphaNotifier"));
+    }
+
     private static Solution CreateSampleSolution(AdhocWorkspace workspace)
         => CreateSolution(
             workspace,
@@ -526,6 +602,149 @@ public class SolutionAnalyzerTests
                 public WidgetController(IWidget widget) => _widget = widget;
 
                 public async Task RunAsync(CancellationToken ct) => await _widget.DoAsync(ct);
+            }
+        }
+        """;
+
+    private const string InterfaceImplementationScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Models.Attributes;
+
+        namespace Sample
+        {
+            public interface INotifier
+            {
+                Task NotifyAsync(CancellationToken ct);
+            }
+
+            [C4Component(Description = "First notifier implementation")]
+            public sealed class FirstNotifier : INotifier
+            {
+                public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+
+            [C4Component(Description = "Second notifier implementation")]
+            public sealed class SecondNotifier : INotifier
+            {
+                public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+
+            [C4Component(IsRoot = true, Description = "Root controller notifying")]
+            public sealed class NotifyController
+            {
+                private readonly INotifier _notifier;
+
+                public NotifyController(INotifier notifier) => _notifier = notifier;
+
+                public async Task RunAsync(CancellationToken ct) => await _notifier.NotifyAsync(ct);
+            }
+        }
+        """;
+
+    private const string DerivedInterfaceScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Models.Attributes;
+
+        namespace Sample
+        {
+            public interface INotifier
+            {
+                Task NotifyAsync(CancellationToken ct);
+            }
+
+            public interface IEmailNotifier : INotifier
+            {
+            }
+
+            [C4Component(Description = "Email notifier")]
+            public sealed class EmailNotifier : IEmailNotifier
+            {
+                public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+
+            [C4Component(IsRoot = true, Description = "Root controller requiring the base notifier")]
+            public sealed class BaseNotifyController
+            {
+                private readonly INotifier _notifier;
+
+                public BaseNotifyController(INotifier notifier) => _notifier = notifier;
+
+                public async Task RunAsync(CancellationToken ct) => await _notifier.NotifyAsync(ct);
+            }
+        }
+        """;
+
+    private const string UnresolvedInterfaceScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Models.Attributes;
+
+        namespace Sample
+        {
+            public interface INotifier
+            {
+                Task NotifyAsync(CancellationToken ct);
+            }
+
+            [C4Component(IsRoot = true, Description = "Root controller without a notifier implementation")]
+            public sealed class OrphanNotifyController
+            {
+                private readonly INotifier _notifier;
+
+                public OrphanNotifyController(INotifier notifier) => _notifier = notifier;
+
+                public async Task RunAsync(CancellationToken ct) => await _notifier.NotifyAsync(ct);
+            }
+        }
+        """;
+
+    private const string SameNamedInterfacesScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Models.Attributes;
+
+        namespace Sample.Alpha
+        {
+            public interface INotifier
+            {
+                Task NotifyAsync(CancellationToken ct);
+            }
+
+            public sealed class AlphaNotifier : INotifier
+            {
+                public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+        }
+
+        namespace Sample.Beta
+        {
+            public interface INotifier
+            {
+                Task NotifyAsync(CancellationToken ct);
+            }
+
+            public sealed class BetaNotifier : INotifier
+            {
+                public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+        }
+
+        namespace Sample
+        {
+            [C4Component(IsRoot = true, Description = "Root controller using the beta notifier")]
+            public sealed class BetaNotifyController
+            {
+                private readonly Sample.Beta.INotifier _notifier;
+
+                public BetaNotifyController(Sample.Beta.INotifier notifier) => _notifier = notifier;
+
+                public async Task RunAsync(CancellationToken ct) => await _notifier.NotifyAsync(ct);
             }
         }
         """;

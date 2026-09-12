@@ -13,17 +13,28 @@ internal sealed record ParsedSolution
 
     private readonly IReadOnlyCollection<Project> _projects;
     private readonly IReadOnlyDictionary<SyntaxTree, SemanticModel> _semanticModels;
+    private readonly IReadOnlyDictionary<string, INamedTypeSymbol> _interfaceImplementations;
 
     public IEnumerable<Project.Class> AllClasses => _projects.SelectMany(x => x.Classes);
 
     public IEnumerable<INamedTypeSymbol> AllSymbols
         => AllClasses.Select(x => x.SemanticModel.GetDeclaredSymbol(x.ClassDeclarationSyntax)).OfType<INamedTypeSymbol>();
 
-    public ParsedSolution(IReadOnlyCollection<Project> projects, IReadOnlyDictionary<SyntaxTree, SemanticModel> semanticModels)
+    public ParsedSolution(
+        IReadOnlyCollection<Project> projects,
+        IReadOnlyDictionary<SyntaxTree, SemanticModel> semanticModels,
+        IReadOnlyDictionary<string, INamedTypeSymbol> interfaceImplementations)
     {
         _projects = projects;
         _semanticModels = semanticModels;
+        _interfaceImplementations = interfaceImplementations;
     }
+
+    /// <summary>
+    /// Возвращает первый класс разобранного солюшена, реализующий указанный интерфейс, либо <c>null</c>, если реализация не найдена.
+    /// </summary>
+    public INamedTypeSymbol? FindInterfaceImplementation(INamedTypeSymbol interfaceSymbol)
+        => _interfaceImplementations.GetValueOrDefault(interfaceSymbol.ToDisplayString());
 
     public ClassMethod? FindMethodDeclaration(IMethodSymbol methodSymbol)
     {

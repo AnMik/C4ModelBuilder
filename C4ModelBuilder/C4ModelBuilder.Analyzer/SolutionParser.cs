@@ -1,6 +1,7 @@
 ﻿using C4ModelBuilder.Analyzer.Infrastructure;
 using C4ModelBuilder.Analyzer.Models;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
@@ -16,7 +17,7 @@ internal static class SolutionParser
                              .SelectAwait(async project => await ParseProject(project, ct))
                              .ToListAsync(ct);
 
-        return new ParsedSolution(projects, CreateSemanticModels(projects));
+        return new ParsedSolution(projects, CreateSemanticModels(projects), CreateInterfaceImplementationIndex(projects));
     }
 
     private static IReadOnlyDictionary<SyntaxTree, SemanticModel> CreateSemanticModels(
@@ -24,23 +25,46 @@ internal static class SolutionParser
     {
         var semanticModels = new Dictionary<SyntaxTree, SemanticModel>();
 
-        foreach (var project in projects)
+        foreach (var compilation in projects.Select(x => x.Compilation))
         {
-            foreach (var syntaxTree in project.Compilation.SyntaxTrees)
+            foreach (var syntaxTree in compilation.SyntaxTrees)
             {
-                // Синтаксическое дерево принадлежит ровно одному проекту солюшена — берём первое вхождение.
-                if (!semanticModels.ContainsKey(syntaxTree))
+                var added = semanticModels.TryAdd(syntaxTree, compilation.GetSemanticModel(syntaxTree));
+
+                if (!added)
                 {
-                    semanticModels[syntaxTree] = project.Compilation.GetSemanticModel(syntaxTree);
-                }
-                else
-                {
-                    // todo: log
+                    // todo: log warning
                 }
             }
         }
 
         return semanticModels;
+    }
+
+    private static IReadOnlyDictionary<string, INamedTypeSymbol> CreateInterfaceImplementationIndex(
+        IReadOnlyCollection<ParsedSolution.Project> projects)
+    {
+        var interfaceImplementations = new Dictionary<string, INamedTypeSymbol>(StringComparer.Ordinal);
+
+        foreach (var @class in projects.SelectMany(project => project.Classes))
+        {
+            if (@class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax) is not { } classSymbol)
+            {
+                continue;
+            }
+
+            foreach (var @interface in classSymbol.AllInterfaces)
+            {
+                var added = interfaceImplementations.TryAdd(@interface.ToDisplayString(), classSymbol);
+
+                if (!added)
+                {
+                    // todo: log warning
+                }
+            }
+        }
+
+        return interfaceImplementations;
     }
 
     private static async Task<ParsedSolution.Project> ParseProject(Project project, CancellationToken ct = default)
@@ -49,11 +73,11 @@ internal static class SolutionParser
             ?? throw new InvalidOperationException("Не удалось получить объект compilation.");
 
         var classes = await project
-            .Documents
-            .ToAsyncEnumerable()
-            .SelectAwait(async document => await ParseDocument(document, ct))
-            .SelectMany(x => x.ToAsyncEnumerable())
-            .ToListAsync(ct);
+                            .Documents
+                            .ToAsyncEnumerable()
+                            .SelectAwait(async document => await ParseDocument(document, ct))
+                            .SelectMany(x => x.ToAsyncEnumerable())
+                            .ToListAsync(ct);
 
         return new ParsedSolution.Project(compilation, classes);
     }
