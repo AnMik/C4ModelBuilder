@@ -1,4 +1,4 @@
-namespace C4ModelBuilder.Models.Analysis;
+﻿namespace C4ModelBuilder.Models.Analysis;
 
 /// <summary>
 /// Дерево вызовов для одного корневого компонента (результат анализа одного root-класса).
@@ -6,8 +6,6 @@ namespace C4ModelBuilder.Models.Analysis;
 /// </summary>
 public sealed class InvocationTree(string nodeName, string? c4ComponentDescription)
 {
-    // public sealed class C4Component(string description);
-
     /// <summary>
     /// Сигнатура узла (например, "AccountController" или "AdminController.SendPromoAsync").
     /// </summary>

@@ -127,8 +127,9 @@ Rds.Kassa.Widget.Frontend/.vscode
 #Nuget packages
 /packages
 
-/.*
+/.clinerules
+/.specify
 /Afisha.Tickets.Partner/Properties/launchSettings.json
 /rambler-vault-debug.json
-/Certificates/*
+/Certificates
 /output/

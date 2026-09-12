@@ -1,4 +1,4 @@
-namespace C4ModelBuilder.Examples.Sample
+﻿namespace C4ModelBuilder.Examples.Sample
 {
     public sealed class User
     {

@@ -5,7 +5,6 @@ using C4ModelBuilder.Models.Analysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.MSBuild;
 
 namespace C4ModelBuilder.Analyzer;
 
@@ -20,14 +19,22 @@ public sealed class SolutionAnalyzer
         _methodAnalyzer = methodAnalyzer;
     }
 
-    public static async Task<SolutionAnalyzer> Create(string solutionPath, int maxDepth, CancellationToken ct = default)
+    public static async Task<SolutionAnalyzer> Create(
+        ILogger logger,
+        Solution solution,
+        int maxDepth,
+        CancellationToken ct = default)
     {
-        using var workspace = MSBuildWorkspace.Create();
-        var solution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: ct);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(solution);
 
-        var parsedSolution = await SolutionParser.Parse(solution, ct);
-        var rdsCqrsRequests = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, ct);
-        var methodAnalyzer = new MethodAnalyzer(parsedSolution, rdsCqrsRequests, maxDepth);
+        var solutionParser = new SolutionParser(logger);
+        var rdsCqrsAnalyzer = new RdsCqrsRequestsAnalyzer(logger);
+
+        var parsedSolution = await solutionParser.Parse(solution, ct);
+        var rdsCqrsRequests = rdsCqrsAnalyzer.Analyze(parsedSolution, ct);
+
+        var methodAnalyzer = new MethodAnalyzer(logger, parsedSolution, rdsCqrsRequests, maxDepth);
 
         return new SolutionAnalyzer(parsedSolution, methodAnalyzer);
     }
@@ -35,13 +42,14 @@ public sealed class SolutionAnalyzer
     public async IAsyncEnumerable<InvocationTree> AnalyzeComponents([EnumeratorCancellation] CancellationToken ct = default)
     {
         var rootClasses = _parsedSolution
-            .Projects
-            .SelectMany(
-                x => x.Classes,
-                (_, @class) =>
-                    (ClassSyntax: @class.ClassDeclarationSyntax,
-                     ComponentAttribute: @class.SemanticModel.GetDeclaredSymbol(@class.ClassDeclarationSyntax)?.GetC4ComponentAttribute()))
-            .Where(x => x.ComponentAttribute.IsRootC4Component());
+                          .AllClasses
+                          .Select(
+                              @class => (ClassSyntax: @class.ClassDeclarationSyntax,
+                                         ComponentAttribute: @class
+                                                             .SemanticModel
+                                                             .GetDeclaredSymbol(@class.ClassDeclarationSyntax)
+                                                             ?.GetC4ComponentAttribute()))
+                          .Where(x => x.ComponentAttribute.IsRootC4Component());
 
         foreach (var (classSyntax, componentAttribute) in rootClasses)
         {
