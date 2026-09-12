@@ -3,41 +3,48 @@ using System.Text;
 using C4ModelBuilder.Analyzer;
 using C4ModelBuilder.Models.Analysis;
 using C4ModelBuilder.PlantUmlCreator;
-using Microsoft.CodeAnalysis.MSBuild;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
-var logger = loggerFactory.CreateLogger("C4ModelBuilder.Examples");
-logger.LogInformation("Started.");
+var options = ParseCommandLine(args);
 
-var sw = Stopwatch.StartNew();
+if (options.InputPath == null)
+{
+    PrintUsage();
+    return 1;
+}
+
+var inputPath = Path.GetFullPath(options.InputPath);
+var outputDirectory = Path.GetFullPath(options.OutputDirectory ?? "output");
+
+using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
+var logger = loggerFactory.CreateLogger("C4ModelBuilder.Cli");
+logger.LogInformation("Started: {input}", inputPath);
+
+var stopwatch = Stopwatch.StartNew();
 using var cancellationTokenSource = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => CancelToken(eventArgs, cancellationTokenSource);
 
 try
 {
-    await Run(cancellationTokenSource);
+    Directory.CreateDirectory(outputDirectory);
+
+    await Run(inputPath, outputDirectory, options.MaxDepth, logger, cancellationTokenSource);
 }
 catch (TaskCanceledException)
 {
-    logger.LogInformation("Canceled ({elapsed\\:ss}).", sw.Elapsed);
-    return;
+    logger.LogInformation("Canceled ({elapsed\\:ss}).", stopwatch.Elapsed);
+    return 130;
 }
 
-logger.LogInformation("Finished ({elapsed:mm\\:ss}).", sw.Elapsed);
-return;
+logger.LogInformation("Finished ({elapsed:mm\\:ss}).", stopwatch.Elapsed);
+return 0;
 
-async Task Run(CancellationTokenSource cts)
+async Task Run(string inputPath, string outputDirectory, int maxDepth, ILogger logger, CancellationTokenSource cts)
 {
-    var solutionFolder = GetCurrentSolutionFolderPath("C4ModelBuilder.sln");
-    var solutionFilePath = Path.Combine(solutionFolder.FullName, "C4ModelBuilder.sln");
-    // var solutionFilePath = "C:\\Repos\\kassa\\Afisha.Tickets.All.sln";
-    var artifactsFolder = Path.Combine(solutionFolder.Parent!.FullName, "output");
+    var solution = await OpenInputAsync(inputPath, cts.Token);
 
-    using var workspace = MSBuildWorkspace.Create();
-    var solution = await workspace.OpenSolutionAsync(solutionFilePath, cancellationToken: cts.Token);
-
-    var solutionAnalyzer = await SolutionAnalyzer.Create(logger, solution, maxDepth: 15, ct: cts.Token);
+    var solutionAnalyzer = await SolutionAnalyzer.Create(logger, solution, maxDepth, cts.Token);
     var invocationTrees = solutionAnalyzer.AnalyzeComponents(cts.Token);
 
     await foreach (var invocationTree in invocationTrees)
@@ -45,21 +52,108 @@ async Task Run(CancellationTokenSource cts)
         logger.LogDebug("{tree}", FormatInvocationTree(invocationTree));
 
         var plantUml = PlantUmlGenerator.Generate(invocationTree);
-
-        var path = Path.Combine(artifactsFolder, $"{invocationTree.NodeName}.puml");
-        await File.WriteAllTextAsync(path, plantUml);
-        logger.LogInformation("{path}.", path);
+        var outputPath = Path.Combine(outputDirectory, $"{invocationTree.NodeName}.puml");
+        await File.WriteAllTextAsync(outputPath, plantUml, cts.Token);
+        logger.LogInformation("Created {path}.", outputPath);
     }
 }
 
-static string FormatInvocationTree(InvocationTree node, int depth = 0)
+async Task<Solution> OpenInputAsync(string inputPath, CancellationToken ct)
+{
+    if (!File.Exists(inputPath))
+    {
+        throw new FileNotFoundException($"Не найден входной файл {inputPath}.", inputPath);
+    }
+
+    var extension = Path.GetExtension(inputPath);
+    if (extension.Equals(".sln", StringComparison.OrdinalIgnoreCase))
+    {
+        using var workspace = Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.Create();
+        return await workspace.OpenSolutionAsync(inputPath, cancellationToken: ct);
+    }
+
+    if (extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+    {
+        using var workspace = Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.Create();
+        var project = await workspace.OpenProjectAsync(inputPath, cancellationToken: ct);
+        return project.Solution;
+    }
+
+    throw new InvalidOperationException("Входной файл должен иметь расширение .sln или .csproj.");
+}
+
+CliOptions ParseCommandLine(string[] arguments)
+{
+    if (arguments.Any(argument => argument is "-h" or "--help"))
+    {
+        return new CliOptions(null, null, 15);
+    }
+
+    string? inputPath = null;
+    string? outputDirectory = null;
+    var maxDepth = 15;
+
+    for (var index = 0; index < arguments.Length; index++)
+    {
+        var argument = arguments[index];
+
+        switch (argument)
+        {
+            case "--solution":
+            case "-s":
+                inputPath = ReadValue(arguments, ++index, argument);
+                break;
+            case "--output":
+            case "-o":
+                outputDirectory = ReadValue(arguments, ++index, argument);
+                break;
+            case "--max-depth":
+            case "-d":
+                maxDepth = ParseMaxDepth(ReadValue(arguments, ++index, argument));
+                break;
+            default:
+                if (inputPath == null && !argument.StartsWith("-", StringComparison.Ordinal))
+                {
+                    inputPath = argument;
+                    break;
+                }
+
+                throw new ArgumentException($"Неизвестный аргумент {argument}.");
+        }
+    }
+
+    return new CliOptions(inputPath, outputDirectory ?? "output", maxDepth);
+}
+
+string ReadValue(string[] arguments, int valueIndex, string optionName)
+{
+    if (valueIndex >= arguments.Length || arguments[valueIndex].StartsWith("-", StringComparison.Ordinal))
+    {
+        throw new ArgumentException($"Для аргумента {optionName} не задано значение.");
+    }
+
+    return arguments[valueIndex];
+}
+
+int ParseMaxDepth(string value)
+    => int.TryParse(value, out var maxDepth) && maxDepth >= 0
+        ? maxDepth
+        : throw new ArgumentException("--max-depth должен быть неотрицательным целым числом.");
+
+void PrintUsage()
+{
+    Console.WriteLine(
+        "Использование: C4ModelBuilder.Cli <путь-к-.sln-или-.csproj> [--solution <path>] [--output <directory>] [--max-depth <number>]");
+}
+
+string FormatInvocationTree(InvocationTree node, int depth = 0)
 {
     var builder = new StringBuilder();
-    builder.AppendLine($"{new string(' ', depth * 3)}\u2514\u2500\u2500{node.NodeName}");
+    builder.AppendLine($"{new string(' ', depth * 3)}└──{node.NodeName}");
 
     if (node.Invocations.Count == 0)
     {
-        builder.AppendLine($"{new string(' ', (depth + 1) * 3)}\u2514\u2500\u2500<Empty>");
+        builder.AppendLine($"{new string(' ', (depth + 1) * 3)}└──<Empty>");
         return builder.ToString();
     }
 
@@ -74,6 +168,7 @@ static string FormatInvocationTree(InvocationTree node, int depth = 0)
 void CancelToken(ConsoleCancelEventArgs args, CancellationTokenSource cts)
 {
     args.Cancel = true;
+
     try
     {
         cts.Cancel();
@@ -84,19 +179,4 @@ void CancelToken(ConsoleCancelEventArgs args, CancellationTokenSource cts)
     }
 }
 
-static DirectoryInfo GetCurrentSolutionFolderPath(string solutionFileName)
-{
-    var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-    while (directory != null)
-    {
-        if (File.Exists(Path.Combine(directory.FullName, solutionFileName)))
-        {
-            return directory;
-        }
-
-        directory = directory.Parent;
-    }
-
-    throw new InvalidOperationException($"Каталог решения {solutionFileName} не найден.");
-}
+sealed record CliOptions(string? InputPath, string? OutputDirectory, int MaxDepth);

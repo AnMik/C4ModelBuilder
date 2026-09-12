@@ -26,6 +26,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{10E617
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Attributes", "C4ModelBuilder.Attributes\C4ModelBuilder.Attributes.csproj", "{7CE2B1C9-1854-4E14-A900-DE12E75C6AEA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Sample.Target", "C4ModelBuilder.Sample.Target\C4ModelBuilder.Sample.Target.csproj", "{3F6C7B23-6336-4485-BD17-5A658649DFC3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -60,6 +62,10 @@ Global
 		{7CE2B1C9-1854-4E14-A900-DE12E75C6AEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7CE2B1C9-1854-4E14-A900-DE12E75C6AEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7CE2B1C9-1854-4E14-A900-DE12E75C6AEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F6C7B23-6336-4485-BD17-5A658649DFC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F6C7B23-6336-4485-BD17-5A658649DFC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F6C7B23-6336-4485-BD17-5A658649DFC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F6C7B23-6336-4485-BD17-5A658649DFC3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 	EndGlobalSection

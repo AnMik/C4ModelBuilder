@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using C4ModelBuilder.Models.Attributes;
 
-namespace C4ModelBuilder.Examples.Sample
+namespace C4ModelBuilder.Sample.Target
 {
     // Интерфейс внешнего сервиса без имплементации в солюшене (аналог вызова внешней библиотеки).
     [C4Component(Description = "External SMS gateway")]
