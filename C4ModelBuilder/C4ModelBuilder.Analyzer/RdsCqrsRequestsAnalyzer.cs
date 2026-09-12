@@ -5,13 +5,12 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
 
-internal static class RdsCqrsRequestsAnalyzer
+internal sealed class RdsCqrsRequestsAnalyzer(ILogger logger)
 {
     private const string HandleAsyncMethodName = "HandleAsync";
 
-    public static IReadOnlyDictionary<string, ClassMethod> Analyze(
+    public IReadOnlyDictionary<string, ClassMethod> Analyze(
         ParsedSolution parsedSolution,
-        ILogger logger,
         CancellationToken ct = default)
     {
         var cqrsRequestClassNames = parsedSolution
@@ -84,12 +83,12 @@ internal static class RdsCqrsRequestsAnalyzer
         return requestHandlers;
     }
 
-    private static bool IsCqrsRequest(ClassDeclarationSyntax @class, SemanticModel semanticModel)
+    private bool IsCqrsRequest(ClassDeclarationSyntax @class, SemanticModel semanticModel)
         => semanticModel.GetDeclaredSymbol(@class)?.AllInterfaces.Any(x => x.Name is "IQuery" or "ICommand" or "IResultingCommand") == true
             && @class.Modifiers.All(
                 syntaxToken => !syntaxToken.IsKind(SyntaxKind.StructKeyword) && !syntaxToken.IsKind(SyntaxKind.PrivateKeyword));
 
-    private static string? TryGetRequestHandledName(TypeSyntax typeSyntax, SemanticModel semanticModel)
+    private string? TryGetRequestHandledName(TypeSyntax typeSyntax, SemanticModel semanticModel)
     {
         if (semanticModel.GetTypeInfo(typeSyntax).Type is not INamedTypeSymbol { IsGenericType: true } typeSymbol)
         {
@@ -101,7 +100,7 @@ internal static class RdsCqrsRequestsAnalyzer
             : null;
     }
 
-    private static bool IsCqrsHandler(INamedTypeSymbol originalDefinition)
+    private bool IsCqrsHandler(INamedTypeSymbol originalDefinition)
     {
         var containingNamespace = originalDefinition.ContainingNamespace;
 
@@ -114,7 +113,7 @@ internal static class RdsCqrsRequestsAnalyzer
         };
     }
 
-    private static bool IsCqrsNamespace(INamespaceSymbol? namespaceSymbol, string leaf)
+    private bool IsCqrsNamespace(INamespaceSymbol? namespaceSymbol, string leaf)
     {
         if (namespaceSymbol is null || namespaceSymbol.Name != leaf)
         {

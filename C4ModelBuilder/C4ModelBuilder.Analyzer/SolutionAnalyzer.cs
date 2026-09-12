@@ -5,7 +5,6 @@ using C4ModelBuilder.Models.Analysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace C4ModelBuilder.Analyzer;
 
@@ -20,20 +19,21 @@ public sealed class SolutionAnalyzer
         _methodAnalyzer = methodAnalyzer;
     }
 
-    public static Task<SolutionAnalyzer> Create(Solution solution, int maxDepth, CancellationToken ct = default)
-        => Create(NullLogger.Instance, solution, maxDepth, ct);
-
     public static async Task<SolutionAnalyzer> Create(
         ILogger logger,
         Solution solution,
         int maxDepth,
         CancellationToken ct = default)
     {
-        ArgumentNullException.ThrowIfNull(solution);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(solution);
 
-        var parsedSolution = await new SolutionParser(logger).Parse(solution, ct);
-        var rdsCqrsRequests = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, logger, ct);
+        var solutionParser = new SolutionParser(logger);
+        var rdsCqrsAnalyzer = new RdsCqrsRequestsAnalyzer(logger);
+
+        var parsedSolution = await solutionParser.Parse(solution, ct);
+        var rdsCqrsRequests = rdsCqrsAnalyzer.Analyze(parsedSolution, ct);
+
         var methodAnalyzer = new MethodAnalyzer(logger, parsedSolution, rdsCqrsRequests, maxDepth);
 
         return new SolutionAnalyzer(parsedSolution, methodAnalyzer);

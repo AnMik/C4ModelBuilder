@@ -15,7 +15,7 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   не смешивать.
 - Атрибуты `C4*` — стабильный публичный контракт: имена, `AttributeUsage` и
   семантику без breaking-изменений не менять.
-- Публичный API — двухэтапный: `SolutionAnalyzer.Create(Solution, maxDepth)` +
+- Публичный API — двухэтапный: `SolutionAnalyzer.Create(ILogger, Solution, maxDepth)` +
   `AnalyzeComponents()` → `InvocationTree`, затем
   `PlantUmlGenerator.Generate(InvocationTree)` → текст PlantUML (единственная
   публичная точка входа генератора).

@@ -4,6 +4,7 @@ using C4ModelBuilder.Models.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace C4ModelBuilder.Analyzer.Tests;
 
@@ -17,7 +18,7 @@ public class SolutionAnalyzerTests
     {
         using var workspace = new AdhocWorkspace();
 
-        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15, Ct);
 
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
@@ -33,7 +34,7 @@ public class SolutionAnalyzerTests
     {
         using var workspace = new AdhocWorkspace();
 
-        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15, Ct);
         var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "HomeController").FirstAsync(Ct);
 
         var names = NodeNames(tree);
@@ -65,7 +66,7 @@ public class SolutionAnalyzerTests
     {
         using var workspace = new AdhocWorkspace();
 
-        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15, Ct);
         var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "AdminController").FirstAsync(Ct);
 
         var names = NodeNames(tree);
@@ -85,7 +86,7 @@ public class SolutionAnalyzerTests
     {
         using var workspace = new AdhocWorkspace();
 
-        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 1, Ct);
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 1, Ct);
 
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
@@ -101,7 +102,7 @@ public class SolutionAnalyzerTests
     {
         using var workspace = new AdhocWorkspace();
 
-        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15, Ct);
 
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
@@ -115,7 +116,7 @@ public class SolutionAnalyzerTests
     {
         using var workspace = new AdhocWorkspace();
 
-        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15, Ct);
 
         var stats = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "StatsController").FirstAsync(Ct);
 
@@ -127,7 +128,7 @@ public class SolutionAnalyzerTests
     {
         using var workspace = new AdhocWorkspace();
 
-        var analyzer = await SolutionAnalyzer.Create(CreateSampleSolution(workspace), maxDepth: 15, Ct);
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15, Ct);
 
         var cache = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "CacheController").FirstAsync(Ct);
 
@@ -140,6 +141,7 @@ public class SolutionAnalyzerTests
         using var workspace = new AdhocWorkspace();
 
         var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
             CreateSolution(
                 workspace,
                 ("RdsCqrs.cs", RdsCqrsStubs),
@@ -163,6 +165,7 @@ public class SolutionAnalyzerTests
         using var workspace = new AdhocWorkspace();
 
         var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
             CreateSolution(workspace, ("Sample.cs", NestedWidgetScenario)),
             maxDepth: 15,
             Ct);
@@ -181,6 +184,7 @@ public class SolutionAnalyzerTests
         using var workspace = new AdhocWorkspace();
 
         var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
             CreateSolution(workspace, ("Sample.cs", InterfaceImplementationScenario)),
             maxDepth: 15,
             Ct);
@@ -206,6 +210,7 @@ public class SolutionAnalyzerTests
         using var workspace = new AdhocWorkspace();
 
         var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
             CreateSolution(workspace, ("Sample.cs", DerivedInterfaceScenario)),
             maxDepth: 15,
             Ct);
@@ -224,6 +229,7 @@ public class SolutionAnalyzerTests
         using var workspace = new AdhocWorkspace();
 
         var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
             CreateSolution(workspace, ("Sample.cs", UnresolvedInterfaceScenario)),
             maxDepth: 15,
             Ct);
@@ -239,6 +245,7 @@ public class SolutionAnalyzerTests
         using var workspace = new AdhocWorkspace();
 
         var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
             CreateSolution(workspace, ("Sample.cs", SameNamedInterfacesScenario)),
             maxDepth: 15,
             Ct);
