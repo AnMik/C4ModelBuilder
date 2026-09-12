@@ -168,6 +168,40 @@ public class InvocationTreeMergerTests
         Assert.That(userApplication.Description, Is.EqualTo("User app logic"));
     }
 
+    [Test]
+    public void Merge_internal_call_to_the_same_component_does_not_produce_a_self_relation()
+    {
+        var root = new InvocationTree("AccountController", c4ComponentDescription: "Account API");
+        var method = new InvocationTree("AccountController.GetLoyaltyCard", c4ComponentDescription: null);
+        var internalClassCall = new InvocationTree("AccountController", c4ComponentDescription: "Account API");
+        var internalMethodCall = new InvocationTree("AccountController.GetLoyaltyCard", c4ComponentDescription: null);
+        internalClassCall.AddInvocation(internalMethodCall);
+        method.AddInvocation(internalClassCall);
+        root.AddInvocation(method);
+
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
+
+        AssertComponents(diagram, "AccountController");
+        Assert.That(diagram.Relations, Is.Empty);
+    }
+
+    [Test]
+    public void Merge_internal_call_to_the_same_component_still_relates_the_component_to_downstream_components()
+    {
+        var root = new InvocationTree("AccountController", c4ComponentDescription: "Account API");
+        var method = new InvocationTree("AccountController.DeleteLoyaltyCard", c4ComponentDescription: null);
+        var internalClassCall = new InvocationTree("AccountController", c4ComponentDescription: "Account API");
+        var userService = new InvocationTree("UserService", c4ComponentDescription: "User business logic");
+        internalClassCall.AddInvocation(userService);
+        method.AddInvocation(internalClassCall);
+        root.AddInvocation(method);
+
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
+
+        AssertComponents(diagram, "AccountController", "UserService");
+        AssertRelations(diagram, ("AccountController", "UserService"));
+    }
+
     private static void AssertComponents(C4ComponentDiagram diagram, params string[] expected)
     {
         var actual = diagram.Components.Select(component => component.ComponentAlias).ToHashSet();

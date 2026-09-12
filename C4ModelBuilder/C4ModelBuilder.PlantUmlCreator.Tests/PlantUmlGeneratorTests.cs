@@ -40,4 +40,27 @@ public class PlantUmlGeneratorTests
         Assert.That(result, Does.Contain("Rel(HomeController, UserService, \"\")"));
         Assert.That(result, Does.Not.Contain("HomeController.GetUsersAsync"));
     }
+
+    [Test]
+    public void Generator_internal_calls_inside_a_component_do_not_render_self_relations()
+    {
+        var tree = new InvocationTree("AccountController", c4ComponentDescription: "Account API");
+        var method = new InvocationTree("AccountController.GetStoredPaymentCards", c4ComponentDescription: null);
+        var internalClassCall = new InvocationTree("AccountController", c4ComponentDescription: "Account API");
+        var constructor = new InvocationTree(
+            "GetStoredPaymentCardsViewModelConstructor",
+            c4ComponentDescription: "Stored payment cards view model constructor");
+        internalClassCall.AddInvocation(constructor);
+        method.AddInvocation(internalClassCall);
+        tree.AddInvocation(method);
+
+        var result = PlantUmlGenerator.Generate(tree);
+
+        Assert.That(result, Does.Not.Contain("Rel(AccountController, AccountController, \"\")"));
+        Assert.That(
+            result,
+            Does.Not.Contain(
+                "Rel(GetStoredPaymentCardsViewModelConstructor, GetStoredPaymentCardsViewModelConstructor, \"\")"));
+        Assert.That(result, Does.Contain("Rel(AccountController, GetStoredPaymentCardsViewModelConstructor, \"\")"));
+    }
 }
