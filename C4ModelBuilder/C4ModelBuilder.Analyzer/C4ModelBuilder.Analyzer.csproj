@@ -15,6 +15,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\C4ModelBuilder.Models\C4ModelBuilder.Models.csproj" />
+      <ProjectReference Include="..\C4ModelBuilder.Attributes\C4ModelBuilder.Attributes.csproj" />
     </ItemGroup>
 
     <ItemGroup>
