@@ -6,9 +6,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
 
-internal static class SolutionParser
+internal sealed class SolutionParser(ILogger logger)
 {
-    public static async Task<ParsedSolution> Parse(Solution solution, CancellationToken ct = default)
+    public async Task<ParsedSolution> Parse(Solution solution, CancellationToken ct = default)
     {
         var projects = await solution
                              .Projects
@@ -20,7 +20,35 @@ internal static class SolutionParser
         return new ParsedSolution(projects, CreateSemanticModels(projects), CreateInterfaceImplementationIndex(projects));
     }
 
-    private static IReadOnlyDictionary<SyntaxTree, SemanticModel> CreateSemanticModels(
+    private async Task<ParsedSolution.Project> ParseProject(Project project, CancellationToken ct = default)
+    {
+        var compilation = await project.GetCompilationAsync(ct)
+            ?? throw new InvalidOperationException("Не удалось получить объект compilation.");
+
+        var classes = await project
+                            .Documents
+                            .ToAsyncEnumerable()
+                            .SelectAwait(async document => await ParseDocument(document, ct))
+                            .SelectMany(x => x.ToAsyncEnumerable())
+                            .ToListAsync(ct);
+
+        return new ParsedSolution.Project(compilation, classes);
+    }
+
+    private async Task<IEnumerable<ParsedSolution.Project.Class>> ParseDocument(Document document, CancellationToken ct = default)
+    {
+        var semanticModel = await document.GetSemanticModelAsync(ct)
+            ?? throw new InvalidOperationException($"Не удалось получить семантическую модель для документа {document.Name}.");
+
+        var syntaxRootNode = await semanticModel.SyntaxTree.GetRootAsync(ct);
+
+        return syntaxRootNode
+            .DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .Select(x => new ParsedSolution.Project.Class(semanticModel, x));
+    }
+
+    private IReadOnlyDictionary<SyntaxTree, SemanticModel> CreateSemanticModels(
         IReadOnlyCollection<ParsedSolution.Project> projects)
     {
         var semanticModels = new Dictionary<SyntaxTree, SemanticModel>();
@@ -33,7 +61,9 @@ internal static class SolutionParser
 
                 if (!added)
                 {
-                    // todo: log warning
+                    logger.LogWarning(
+                        "Семантическая модель для дерева синтаксиса {syntaxTree} уже добавлена — документ пропущен.",
+                        syntaxTree);
                 }
             }
         }
@@ -41,7 +71,7 @@ internal static class SolutionParser
         return semanticModels;
     }
 
-    private static IReadOnlyDictionary<string, INamedTypeSymbol> CreateInterfaceImplementationIndex(
+    private IReadOnlyDictionary<string, INamedTypeSymbol> CreateInterfaceImplementationIndex(
         IReadOnlyCollection<ParsedSolution.Project> projects)
     {
         var interfaceImplementations = new Dictionary<string, INamedTypeSymbol>(StringComparer.Ordinal);
@@ -59,39 +89,14 @@ internal static class SolutionParser
 
                 if (!added)
                 {
-                    // todo: log warning
+                    logger.LogWarning(
+                        "Реализация интерфейса {interface} уже зарегистрирована — класс {class} пропущен.",
+                        @interface.ToDisplayString(),
+                        classSymbol.ToDisplayString());
                 }
             }
         }
 
         return interfaceImplementations;
-    }
-
-    private static async Task<ParsedSolution.Project> ParseProject(Project project, CancellationToken ct = default)
-    {
-        var compilation = await project.GetCompilationAsync(ct)
-            ?? throw new InvalidOperationException("Не удалось получить объект compilation.");
-
-        var classes = await project
-                            .Documents
-                            .ToAsyncEnumerable()
-                            .SelectAwait(async document => await ParseDocument(document, ct))
-                            .SelectMany(x => x.ToAsyncEnumerable())
-                            .ToListAsync(ct);
-
-        return new ParsedSolution.Project(compilation, classes);
-    }
-
-    private static async Task<IEnumerable<ParsedSolution.Project.Class>> ParseDocument(Document document, CancellationToken ct = default)
-    {
-        var semanticModel = await document.GetSemanticModelAsync(ct)
-            ?? throw new InvalidOperationException($"Не удалось получить семантическую модель для документа {document.Name}.");
-
-        var syntaxRootNode = await semanticModel.SyntaxTree.GetRootAsync(ct);
-
-        return syntaxRootNode
-            .DescendantNodes()
-            .OfType<ClassDeclarationSyntax>()
-            .Select(x => new ParsedSolution.Project.Class(semanticModel, x));
     }
 }

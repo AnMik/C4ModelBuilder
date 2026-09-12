@@ -32,7 +32,7 @@ public sealed class SolutionAnalyzer
         ArgumentNullException.ThrowIfNull(solution);
         ArgumentNullException.ThrowIfNull(logger);
 
-        var parsedSolution = await SolutionParser.Parse(solution, ct);
+        var parsedSolution = await new SolutionParser(logger).Parse(solution, ct);
         var rdsCqrsRequests = RdsCqrsRequestsAnalyzer.Analyze(parsedSolution, logger, ct);
         var methodAnalyzer = new MethodAnalyzer(logger, parsedSolution, rdsCqrsRequests, maxDepth);
 
