@@ -4,7 +4,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Analyzer", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.PlantUmlCreator", "C4ModelBuilder.PlantUmlCreator\C4ModelBuilder.PlantUmlCreator.csproj", "{B93452E5-AE17-43F4-B2C8-E255984FC84B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "App", "App", "{E4B97C21-6B63-4C7E-B23B-9CE560EBE501}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Library", "Library", "{A879E6F5-1956-42C4-8A5E-F7C9E743DF02}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{4FA501B1-0058-4149-8BA1-4564D5858B0A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{8B47E1F2-D73E-4C2E-8E92-E2BC44738C03}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.PlantUmlCreator.Tests", "C4ModelBuilder.PlantUmlCreator.Tests\C4ModelBuilder.PlantUmlCreator.Tests.csproj", "{37487C34-AFF5-4686-8D21-3BE61E0C2E18}"
 EndProject
@@ -12,14 +18,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Analyzer.Tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Models", "C4ModelBuilder.Models\C4ModelBuilder.Models.csproj", "{593EB38B-88ED-4AD5-B137-C6EFD7ABBB09}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cli", "Cli", "{3D7CA934-618A-476E-9220-F6B2B0790A56}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Cli", "C4ModelBuilder.Cli\C4ModelBuilder.Cli.csproj", "{691D7D77-B2A0-44D9-98F9-1B81C248697A}"
 EndProject
+
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{10E61708-2729-4432-82D1-4D92118AB9B5}"
 	ProjectSection(SolutionItems) = preProject
-		..\README.md = ..\README.md
-		..\AGENTS.md = ..\AGENTS.md
 		..\.editorconfig = ..\.editorconfig
 		..\.gitignore = ..\.gitignore
 	EndProjectSection
@@ -27,6 +30,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Attributes", "C4ModelBuilder.Attributes\C4ModelBuilder.Attributes.csproj", "{7CE2B1C9-1854-4E14-A900-DE12E75C6AEA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Sample.Target", "C4ModelBuilder.Sample.Target\C4ModelBuilder.Sample.Target.csproj", "{3F6C7B23-6336-4485-BD17-5A658649DFC3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{82C9B7B0-2C54-49F8-BAF7-FAE5CDD0F775}"
+	ProjectSection(SolutionItems) = preProject
+		..\README.md = ..\README.md
+		..\AGENTS.md = ..\AGENTS.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -70,8 +79,13 @@ Global
 	GlobalSection(SolutionProperties) = preSolution
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{B819DAC2-346E-43F2-935F-80AB36BDF980} = {E4B97C21-6B63-4C7E-B23B-9CE560EBE501}
+		{B93452E5-AE17-43F4-B2C8-E255984FC84B} = {E4B97C21-6B63-4C7E-B23B-9CE560EBE501}
+		{593EB38B-88ED-4AD5-B137-C6EFD7ABBB09} = {E4B97C21-6B63-4C7E-B23B-9CE560EBE501}
+		{691D7D77-B2A0-44D9-98F9-1B81C248697A} = {E4B97C21-6B63-4C7E-B23B-9CE560EBE501}
+		{7CE2B1C9-1854-4E14-A900-DE12E75C6AEA} = {A879E6F5-1956-42C4-8A5E-F7C9E743DF02}
 		{37487C34-AFF5-4686-8D21-3BE61E0C2E18} = {4FA501B1-0058-4149-8BA1-4564D5858B0A}
 		{D7A2B1C0-4E5F-4A6B-9C8D-1E2F3A4B5C6D} = {4FA501B1-0058-4149-8BA1-4564D5858B0A}
-		{691D7D77-B2A0-44D9-98F9-1B81C248697A} = {3D7CA934-618A-476E-9220-F6B2B0790A56}
+		{3F6C7B23-6336-4485-BD17-5A658649DFC3} = {8B47E1F2-D73E-4C2E-8E92-E2BC44738C03}
 	EndGlobalSection
 EndGlobal
