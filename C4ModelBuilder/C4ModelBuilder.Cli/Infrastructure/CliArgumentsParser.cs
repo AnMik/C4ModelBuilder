@@ -31,7 +31,7 @@ internal static class CliArgumentsParser
         var outputOption = new Option<DirectoryInfo>(aliases: ["--output", "-o"], name: "output")
         {
             Required = true,
-            Description = "The path to solution for analyze."
+            Description = "The directory path to save generated diagrams."
         }.AcceptLegalFilePathsOnly();
 
         var maxDepthOption = new Option<int>(aliases: ["--max-depth", "-d"], name: "max-depth")
