@@ -15,14 +15,23 @@ RUN dotnet restore "C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj"
 # Копируем исходники и собираем проект
 COPY . .
 WORKDIR "/src/C4ModelBuilder/C4ModelBuilder.Cli"
-RUN dotnet publish "C4ModelBuilder.Cli.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "C4ModelBuilder.Cli.csproj" -c Release -o /app/publish /p:UseAppHost=false --no-restore
 
 # Этап 2: Финальный образ (требуется dotnet SDK для работы Roslyn MSBuildWorkspace)
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS final
 WORKDIR /app
+
+# Отключаем телеметрию и лишний вывод от SDK
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+    DOTNET_NOLOGO=1
+
 COPY --from=build /app/publish .
 
 # Делаем символическую ссылку, чтобы утилиту можно было вызывать как 'c4builder' из любого места
 RUN printf '#!/bin/sh\ndotnet /app/C4ModelBuilder.Cli.dll "$@"\n' > /usr/local/bin/c4builder && chmod +x /usr/local/bin/c4builder
+
+# Запуск под пользователем без привилегий root
+USER app
 
 ENTRYPOINT ["dotnet", "/app/C4ModelBuilder.Cli.dll"]
