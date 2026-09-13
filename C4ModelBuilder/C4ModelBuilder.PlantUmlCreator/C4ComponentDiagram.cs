@@ -10,7 +10,14 @@ internal sealed record C4ComponentDiagram(
     IReadOnlyCollection<C4ComponentDiagram.C4Component> Components,
     IReadOnlyCollection<C4ComponentDiagram.C4Relation> Relations)
 {
-    public readonly record struct C4Component(string ComponentAlias, string ComponentName, string Description);
+    public enum Type
+    {
+        Normal,
+        Repository,
+        Gateway
+    }
+
+    public readonly record struct C4Component(string ComponentAlias, string ComponentName, string Description, Type Type = Type.Normal);
 
     public readonly record struct C4Relation(string FromComponentAlias, string ToComponentAlias);
 }

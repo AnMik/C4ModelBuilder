@@ -55,13 +55,26 @@ internal static class InvocationTreeMerger
                     signature => new C4ComponentDiagram.C4Component(
                         ComponentAlias: signature,
                         ComponentName: signature,
-                        Description: descriptions.GetValueOrDefault(signature) ?? string.Empty))
+                        Description: descriptions.GetValueOrDefault(signature) ?? string.Empty,
+                        Type: ResolveComponentType(signature)))
                 .ToList(),
             Relations: relations
-                .Select(
-                    relation => new C4ComponentDiagram.C4Relation(
-                        FromComponentAlias: relation.From,
-                        ToComponentAlias: relation.To))
+                .Select(relation => new C4ComponentDiagram.C4Relation(FromComponentAlias: relation.From, ToComponentAlias: relation.To))
                 .ToList());
+    }
+
+    private static C4ComponentDiagram.Type ResolveComponentType(string componentName)
+    {
+        if (componentName.Contains("Repository", StringComparison.OrdinalIgnoreCase))
+        {
+            return C4ComponentDiagram.Type.Repository;
+        }
+
+        if (componentName.Contains("Gateway", StringComparison.OrdinalIgnoreCase))
+        {
+            return C4ComponentDiagram.Type.Gateway;
+        }
+
+        return C4ComponentDiagram.Type.Normal;
     }
 }

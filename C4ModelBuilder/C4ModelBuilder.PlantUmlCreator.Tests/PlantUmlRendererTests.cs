@@ -125,4 +125,31 @@ public class PlantUmlRendererTests
         }
         return count;
     }
+
+    [Test]
+    public void Render_renders_repository_component_with_tag()
+    {
+        var diagram = new C4ComponentDiagram(
+            Components:
+            [
+                new C4ComponentDiagram.C4Component("UserRepository", "UserRepository", "User DB", C4ComponentDiagram.Type.Repository)
+            ],
+            Relations: Array.Empty<C4ComponentDiagram.C4Relation>());
+
+        var result = PlantUmlRenderer.Render(diagram);
+
+        Assert.That(result, Does.Contain("Component(UserRepository, \"UserRepository\", \"User DB\", $tags=\"repository\")"));
+    }
+
+    [Test]
+    public void Render_renders_gateway_component_with_tag()
+    {
+        var diagram = new C4ComponentDiagram(
+            Components: [new C4ComponentDiagram.C4Component("SmsGateway", "SmsGateway", "External SMS", C4ComponentDiagram.Type.Gateway)],
+            Relations: Array.Empty<C4ComponentDiagram.C4Relation>());
+
+        var result = PlantUmlRenderer.Render(diagram);
+
+        Assert.That(result, Does.Contain("Component(SmsGateway, \"SmsGateway\", \"External SMS\", $tags=\"gateway\")"));
+    }
 }
