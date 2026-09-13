@@ -216,4 +216,25 @@ public class InvocationTreeMergerTests
 
         CollectionAssert.AreEquivalent(expected, actual);
     }
+
+    [Test]
+    public void Merge_assigns_repository_and_gateway_component_types()
+    {
+        var root = new InvocationTree("OrderRepository", c4ComponentDescription: "Orders");
+        var gateway = new InvocationTree("PaymentGateway", c4ComponentDescription: "Payments");
+        var normal = new InvocationTree("OrderService", c4ComponentDescription: "Service");
+
+        root.AddInvocation(gateway);
+        root.AddInvocation(normal);
+
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
+
+        var repoComp = diagram.Components.Single(c => c.ComponentAlias == "OrderRepository");
+        var gatewayComp = diagram.Components.Single(c => c.ComponentAlias == "PaymentGateway");
+        var normalComp = diagram.Components.Single(c => c.ComponentAlias == "OrderService");
+
+        Assert.That(repoComp.Type, Is.EqualTo(C4ComponentDiagram.Type.Repository));
+        Assert.That(gatewayComp.Type, Is.EqualTo(C4ComponentDiagram.Type.Gateway));
+        Assert.That(normalComp.Type, Is.EqualTo(C4ComponentDiagram.Type.Normal));
+    }
 }

@@ -13,15 +13,24 @@ internal static class PlantUmlRenderer
 
         var sb = new StringBuilder();
 
-        sb
-            .AppendLine("@startuml")
-            .AppendLine()
-            .AppendLine("!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml")
-            .AppendLine();
+        sb.AppendLine("@startuml")
+          .AppendLine()
+          .AppendLine("!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml")
+          .AppendLine()
+          .AppendLine("AddElementTag(\"repository\", $bgColor=\"#528354\", $fontColor=\"#ffffff\")")
+          .AppendLine("AddElementTag(\"gateway\", $bgColor=\"#7b4286\", $fontColor=\"#ffffff\")")
+          .AppendLine();
 
         foreach (var component in diagram.Components)
         {
-            sb.AppendLine($"Component({component.ComponentAlias}, \"{component.ComponentName}\", \"{component.Description}\")");
+            var tagArg = component.Type switch
+            {
+                C4ComponentDiagram.Type.Repository => ", $tags=\"repository\"",
+                C4ComponentDiagram.Type.Gateway => ", $tags=\"gateway\"",
+                _ => string.Empty
+            };
+
+            sb.AppendLine($"Component({component.ComponentAlias}, \"{component.ComponentName}\", \"{component.Description}\"{tagArg})");
         }
 
         if (diagram.Components.Count > 0 && diagram.Relations.Count > 0)
@@ -34,9 +43,8 @@ internal static class PlantUmlRenderer
             sb.AppendLine($"Rel({relation.FromComponentAlias}, {relation.ToComponentAlias}, \"\")");
         }
 
-        sb
-            .AppendLine()
-            .AppendLine("@enduml");
+        sb.AppendLine()
+          .AppendLine("@enduml");
 
         return sb.ToString();
     }

@@ -1,3 +1,12 @@
-﻿namespace C4ModelBuilder.Cli.Models;
+﻿using Microsoft.Extensions.Logging;
 
-internal sealed record CliOptions(FileInfo SolutionPath, DirectoryInfo OutputDirectory, int MaxDepth);
+namespace C4ModelBuilder.Cli.Models;
+
+internal sealed record CliOptions(
+    FileInfo SolutionPath,
+    DirectoryInfo OutputDirectory,
+    int MaxDepth,
+    OutputType OutputType,
+    LogLevel LogLevel,
+    string? TargetProject,
+    string? ExcludeMask);

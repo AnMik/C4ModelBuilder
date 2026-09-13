@@ -23,12 +23,14 @@ public sealed class SolutionAnalyzer
         ILogger logger,
         Solution solution,
         int maxDepth,
+        string? targetProject = null,
+        string? excludeMask = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(solution);
 
-        var solutionParser = new SolutionParser(logger);
+        var solutionParser = new SolutionParser(logger, targetProject, excludeMask);
         var rdsCqrsAnalyzer = new RdsCqrsRequestsAnalyzer(logger);
 
         var parsedSolution = await solutionParser.Parse(solution, ct);
