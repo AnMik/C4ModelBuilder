@@ -32,13 +32,13 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   глобального состояния; одинаковый вход → одинаковый выход.
 
 ## Ключевые файлы
-- Атрибуты: `C4ModelBuilder.Models/Attributes/*.cs`
+- Атрибуты: `C4ModelBuilder.Attributes/Attributes/*.cs`
 - Модели: `C4ModelBuilder.Models/Analysis/InvocationTree.cs`
 - Анализ: `C4ModelBuilder.Analyzer/{SolutionAnalyzer,SolutionParser,MethodAnalyzer,RdsCqrsRequestsAnalyzer}.cs`
 - Инфраструктура: `C4ModelBuilder.Analyzer/Infrastructure/*.cs`
 - Рендер (публичный фасад + internal-этапы):
   `C4ModelBuilder.PlantUmlCreator/{PlantUmlGenerator,PlantUmlRenderer,InvocationTreeMerger,C4ComponentDiagram}.cs`
-- Примеры/заглушки: `C4ModelBuilder.Examples/Sample/*.cs` и `RdsCqrsStubs.cs`
+- Пример target-проекта/заглушки: `C4ModelBuilder.Sample.Target/*.cs` и `RdsCqrsStubs.cs`
 - Тесты: `C4ModelBuilder.Analyzer.Tests/SolutionAnalyzerTests.cs`,
   `C4ModelBuilder.PlantUmlCreator.Tests/{InvocationTreeMergerTests,PlantUmlRendererTests,PlantUmlGeneratorTests}.cs`
 - Конституция: `.specify/memory/constitution.md` (локальный, не в git)

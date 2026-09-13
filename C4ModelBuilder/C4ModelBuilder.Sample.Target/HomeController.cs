@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using C4ModelBuilder.Models.Attributes;
 
-namespace C4ModelBuilder.Examples.Sample
+namespace C4ModelBuilder.Sample.Target
 {
     [C4Component(IsRoot = true, Description = "Main page: list users and send welcome")]
     public sealed class HomeController

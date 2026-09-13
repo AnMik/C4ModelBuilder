@@ -1,19 +1,50 @@
-# C4ModelBuilder
+﻿# C4ModelBuilder
 
 Инструмент для автоматической генерации PlantUML диаграммы на основе разметки c# кода.
 
-Разметка осуществляется атрибутами:
-1. [C4Context](C4ModelBuilder/C4ModelBuilder.Models/Attributes/C4ContextAttribute.cs)
-2. [C4Container](C4ModelBuilder/C4ModelBuilder.Models/Attributes/C4ContainerAttribute.cs)
-3. [C4Component](C4ModelBuilder/C4ModelBuilder.Models/Attributes/C4ComponentAttribute.cs)
-4. [C4Code](C4ModelBuilder/C4ModelBuilder.Models/Attributes/C4CodeAttribute.cs)
+### Разметка
 
-(на данный момент поддерживается только уровень 3 - components).
+На первом этапе нужно разметить атрибутами целевой проект, на основании которого планируется строить диаграммы.
 
-Солюшен состоит из следующих проектов:
-- C4ModelBuilder.Models - атрибуты для разметки и общие модели билдера.
-- C4ModelBuilder.Analyzer - анализатор классов и связей целевого проекта.
-- C4ModelBuilder.PlantUmlCreator - построитель диаграмм в формате plantuml на основе результатов анализа.
-- C4ModelBuilder.Examples - консольный проект с примером использования инструмента; также содержит заглушки типов `Rds.Cqrs` и размечаемый `[C4Component]` сценарий? который используется тестами анализатора.
-- C4ModelBuilder.PlantUmlCreator.Tests - тесты построителя диаграмм.
-- C4ModelBuilder.Analyzer.Tests - тесты анализатора: разбирают собственный солюшен инструмента.
+Разметка проекта осуществляется атрибутами:
+1. [C4Context](C4ModelBuilder/C4ModelBuilder.Attributes/Attributes/C4ContextAttribute.cs) - не поддерживается.
+2. [C4Container](C4ModelBuilder/C4ModelBuilder.Attributes/Attributes/C4ContainerAttribute.cs) - не поддерживается.
+3. [C4Component](C4ModelBuilder/C4ModelBuilder.Attributes/Attributes/C4ComponentAttribute.cs) - атрибут на классе, интерфейсе или методе.
+4. [C4Code](C4ModelBuilder/C4ModelBuilder.Attributes/Attributes/C4CodeAttribute.cs) - не поддерживается.
+
+### Построение схемы
+
+На втором этапе нужно запустить анализ целевого проекта с помощью консольного приложения.
+
+Пример вызова CLI для примера целевого проекта:
+```powershell
+./scripts/Invoke-Sample.ps1
+```
+
+### Параметры командной строки (CLI)
+
+При запуске `C4ModelBuilder.Cli` поддерживаются следующие аргументы:
+
+| Аргумент | Псевдоним | Тип | Обязательный | По умолчанию | Описание |
+|---|---|---|---|---|---|
+| `--solution` | `-s` | `FileInfo` | Да | — | Путь к целевому файлу решения (`.sln`). |
+| `--output` | `-o` | `DirectoryInfo` | Да | — | Путь к директории для сохранения сгенерированных PlantUML-диаграмм. |
+| `--max-depth` | `-d` | `int` | Нет | `15` | Максимальный уровень глубины рекурсии при анализе дерева вызовов. |
+
+#### Пример прямого запуска через `dotnet run`:
+
+```bash
+dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj -- -s "C4ModelBuilder/C4ModelBuilder.sln" -o "output" -d 16
+```
+
+### Структура решения
+
+Решение состоит из следующих проектов:
+- `C4ModelBuilder.Attributes` - атрибуты для разметки целевого решения.
+- `C4ModelBuilder.Cli` - консольный инструмент построения с4 диаграмм целевого решения.
+- `C4ModelBuilder.Models` - общие модели.
+- `C4ModelBuilder.Analyzer` - анализатор классов и связей целевого проекта.
+- `C4ModelBuilder.PlantUmlCreator` - построитель диаграмм в формате plantuml на основе результатов анализа.
+- `C4ModelBuilder.Sample.Target` - пример целевого проекта, размеченного атрибутами.
+- `C4ModelBuilder.PlantUmlCreator.Tests` - тесты построителя диаграмм.
+- `C4ModelBuilder.Analyzer.Tests` - тесты анализатора: разбирают собственный солюшен инструмента.
