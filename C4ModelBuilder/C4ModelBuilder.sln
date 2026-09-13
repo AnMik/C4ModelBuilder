@@ -25,6 +25,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{10E617
 	ProjectSection(SolutionItems) = preProject
 		..\.editorconfig = ..\.editorconfig
 		..\.gitignore = ..\.gitignore
+		..\Dockerfile = ..\Dockerfile
+		..\.dockerignore = ..\.dockerignore
+		..\.github\workflows\publish-cli-docker.yml = ..\.github\workflows\publish-cli-docker.yml
+		..\.github\workflows\publish-attributes-nuget.yml = ..\.github\workflows\publish-attributes-nuget.yml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "C4ModelBuilder.Attributes", "C4ModelBuilder.Attributes\C4ModelBuilder.Attributes.csproj", "{7CE2B1C9-1854-4E14-A900-DE12E75C6AEA}"
@@ -35,6 +39,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{82C9B7B0-2
 	ProjectSection(SolutionItems) = preProject
 		..\README.md = ..\README.md
 		..\AGENTS.md = ..\AGENTS.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{25C3AFB8-3CA8-4660-BA24-240FAE19447A}"
+	ProjectSection(SolutionItems) = preProject
+		..\scripts\Invoke-Sample.ps1 = ..\scripts\Invoke-Sample.ps1
 	EndProjectSection
 EndProject
 Global
@@ -87,5 +96,6 @@ Global
 		{37487C34-AFF5-4686-8D21-3BE61E0C2E18} = {4FA501B1-0058-4149-8BA1-4564D5858B0A}
 		{D7A2B1C0-4E5F-4A6B-9C8D-1E2F3A4B5C6D} = {4FA501B1-0058-4149-8BA1-4564D5858B0A}
 		{3F6C7B23-6336-4485-BD17-5A658649DFC3} = {8B47E1F2-D73E-4C2E-8E92-E2BC44738C03}
+		{25C3AFB8-3CA8-4660-BA24-240FAE19447A} = {8B47E1F2-D73E-4C2E-8E92-E2BC44738C03}
 	EndGlobalSection
 EndGlobal

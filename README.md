@@ -30,11 +30,15 @@
 | `--solution` | `-s` | `FileInfo` | Да | — | Путь к целевому файлу решения (`.sln`). |
 | `--output` | `-o` | `DirectoryInfo` | Да | — | Путь к директории для сохранения сгенерированных PlantUML-диаграмм. |
 | `--max-depth` | `-d` | `int` | Нет | `15` | Максимальный уровень глубины рекурсии при анализе дерева вызовов. |
+| `--output-type` | `-t` | `OutputType` | Нет | `Puml` | Тип выходного файла (`puml`). |
+| `--project` | `-p` | `string` | Нет | Все проекты | Имя конкретного проекта решения для анализа. |
+| `--exclude` | `-e` | `string` | Нет | `*tests*` | Маска исключаемых из анализа проектов (например, `*tests` или `*Sample*`). |
+| `--log-level` | `-l` | `LogLevel` | Нет | `Warning` | Минимальный уровень логирования (`Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`). |
 
 #### Пример прямого запуска через `dotnet run`:
 
 ```bash
-dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj -- -s "C4ModelBuilder/C4ModelBuilder.sln" -o "output" -d 16
+dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj -- -s "C4ModelBuilder/C4ModelBuilder.sln" -o "output" -d 16 -t puml -l Information
 ```
 
 ### Структура решения

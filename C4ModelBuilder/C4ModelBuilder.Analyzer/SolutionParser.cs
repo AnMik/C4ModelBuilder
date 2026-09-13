@@ -1,4 +1,4 @@
-﻿using C4ModelBuilder.Analyzer.Infrastructure;
+﻿using System.Text.RegularExpressions;
 using C4ModelBuilder.Analyzer.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -6,18 +6,37 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace C4ModelBuilder.Analyzer;
 
-internal sealed class SolutionParser(ILogger logger)
+internal sealed class SolutionParser(ILogger logger, string? targetProject = null, string? excludeMask = null)
 {
     public async Task<ParsedSolution> Parse(Solution solution, CancellationToken ct = default)
     {
         var projects = await solution
                              .Projects
-                             .Where(x => !x.Name.ContainsIgnoreCase("tests"))
+                             .Where(IsProjectIncluded)
                              .ToAsyncEnumerable()
                              .SelectAwait(async project => await ParseProject(project, ct))
                              .ToListAsync(ct);
 
         return new ParsedSolution(projects, CreateSemanticModels(projects), CreateInterfaceImplementationIndex(projects));
+    }
+
+    private bool IsProjectIncluded(Project project)
+    {
+        if (!string.IsNullOrWhiteSpace(targetProject))
+        {
+            return StringComparer.OrdinalIgnoreCase.Equals(project.Name, targetProject);
+        }
+
+        if (string.IsNullOrWhiteSpace(excludeMask))
+        {
+            return true;
+        }
+
+        var regexPattern = Regex.Escape(excludeMask)
+                                .Replace(@"\*", ".*", StringComparison.Ordinal)
+                                .Replace(@"\?", ".", StringComparison.Ordinal);
+
+        return !Regex.IsMatch(project.Name, $"^{regexPattern}$", RegexOptions.IgnoreCase);
     }
 
     private async Task<ParsedSolution.Project> ParseProject(Project project, CancellationToken ct = default)

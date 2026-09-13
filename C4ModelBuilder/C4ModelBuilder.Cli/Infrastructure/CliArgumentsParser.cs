@@ -1,5 +1,6 @@
 ﻿using System.CommandLine;
 using C4ModelBuilder.Cli.Models;
+using Microsoft.Extensions.Logging;
 
 namespace C4ModelBuilder.Cli.Infrastructure;
 
@@ -40,11 +41,37 @@ internal static class CliArgumentsParser
             DefaultValueFactory = _ => 15
         };
 
+        var outputTypeOption = new Option<OutputType>(aliases: ["--output-type", "-t"], name: "output-type")
+        {
+            Description = "The type of generated output file.",
+            DefaultValueFactory = _ => OutputType.Puml
+        };
+
+        var projectOption = new Option<string?>(aliases: ["--project", "-p"], name: "project")
+        {
+            Description = "The specific project name in the solution to analyze (analyzes all projects by default)."
+        };
+
+        var excludeMaskOption = new Option<string?>(aliases: ["--exclude", "-e"], name: "exclude")
+        {
+            Description = "The mask of project names to exclude from analysis (e.g. '*tests')."
+        };
+
+        var logLevelOption = new Option<LogLevel>(aliases: ["--log-level", "-l"], name: "log-level")
+        {
+            Description = "The minimum log level for console output.",
+            DefaultValueFactory = _ => LogLevel.Warning
+        };
+
         var rootCommand = new RootCommand("Tool for building c4 component diagram based on project marked with c4component attributes.")
         {
             solutionOption,
             outputOption,
-            maxDepthOption
+            maxDepthOption,
+            outputTypeOption,
+            projectOption,
+            excludeMaskOption,
+            logLevelOption
         };
 
         var parseResult = rootCommand.Parse(args);
@@ -54,7 +81,11 @@ internal static class CliArgumentsParser
             return new CliOptions(
                 parseResult.GetRequiredValue(solutionOption),
                 parseResult.GetRequiredValue(outputOption),
-                parseResult.GetRequiredValue(maxDepthOption));
+                parseResult.GetRequiredValue(maxDepthOption),
+                parseResult.GetRequiredValue(outputTypeOption),
+                parseResult.GetRequiredValue(logLevelOption),
+                parseResult.GetValue(projectOption),
+                parseResult.GetValue(excludeMaskOption));
         }
 
         foreach (var parseError in parseResult.Errors)

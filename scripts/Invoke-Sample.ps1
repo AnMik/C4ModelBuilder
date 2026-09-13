@@ -10,7 +10,11 @@
 param(
     [string] $SolutionPath = 'C4ModelBuilder\C4ModelBuilder.sln',
     [string] $OutputPath = 'output',
-    [int] $MaxDepth = 16,
+    [int] $MaxDepth = 15,
+    [string] $OutputType = 'puml',
+    [string] $Project = '',
+    [string] $Exclude = '',
+    [string] $LogLevel = 'Information',
     [string] $Configuration = 'Debug'
 )
 
@@ -24,17 +28,35 @@ if (-not (Test-Path $SolutionPath)) {
     exit 1
 }
 
+$cliArgs = @(
+    "-s", $SolutionPath,
+    "-o", $OutputPath,
+    "-d", $MaxDepth,
+    "-t", $OutputType,
+    "-l", $LogLevel
+)
+
+if (-not [string]::IsNullOrWhiteSpace($Project)) {
+    $cliArgs += @("-p", $Project)
+}
+
+if (-not [string]::IsNullOrWhiteSpace($Exclude)) {
+    $cliArgs += @("-e", $Exclude)
+}
+
 Write-Host 'Запуск C4ModelBuilder...' -ForegroundColor Cyan
-Write-Host "  Solution:  $SolutionPath"
-Write-Host "  Output:    $OutputPath"
-Write-Host "  MaxDepth:  $MaxDepth"
+Write-Host "  Solution:   $SolutionPath"
+Write-Host "  Output:     $OutputPath"
+Write-Host "  MaxDepth:   $MaxDepth"
+Write-Host "  OutputType: $OutputType"
+Write-Host "  LogLevel:   $LogLevel"
+if ($Project) { Write-Host "  Project:    $Project" }
+if ($Exclude) { Write-Host "  Exclude:    $Exclude" }
 
 & dotnet run `
     --project $cliProjectPath `
     --configuration $Configuration `
     -- `
-    -s $SolutionPath `
-    -o $OutputPath `
-    -d $MaxDepth
+    @cliArgs
 
 exit $LASTEXITCODE
