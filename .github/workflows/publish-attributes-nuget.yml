@@ -1,0 +1,28 @@
+﻿name: Publish C4ModelBuilder.Attributes to NuGet
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore C4ModelBuilder/C4ModelBuilder.Attributes/C4ModelBuilder.Attributes.csproj
+
+      - name: Build
+        run: dotnet build C4ModelBuilder/C4ModelBuilder.Attributes/C4ModelBuilder.Attributes.csproj --configuration Release --no-restore
+
+      - name: Pack
+        run: dotnet pack C4ModelBuilder/C4ModelBuilder.Attributes/C4ModelBuilder.Attributes.csproj --configuration Release --no-build --output ./nupkg
+
+      - name: Push to NuGet
+        run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
