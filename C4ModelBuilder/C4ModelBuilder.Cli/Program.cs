@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using C4ModelBuilder.Cli;
 using C4ModelBuilder.Cli.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 var options = CliArgumentsParser.Parse(args);
@@ -10,15 +11,20 @@ if (options == null)
     return 1;
 }
 
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
-var logger = loggerFactory.CreateLogger("C4ModelBuilder.Cli");
+var services = new ServiceCollection();
+services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
+services.AddTransient<C4Builder>();
+
+await using var serviceProvider = services.BuildServiceProvider();
+
+var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("Started for {input}", options.SolutionPath);
 
 var stopwatch = Stopwatch.StartNew();
 using var cancellationTokenSource = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) => CancelToken(eventArgs, cancellationTokenSource);
 
-var c4Builder = new C4Builder(loggerFactory);
+var c4Builder = serviceProvider.GetRequiredService<C4Builder>();
 
 try
 {
@@ -26,7 +32,7 @@ try
 }
 catch (TaskCanceledException)
 {
-    logger.LogInformation("Canceled ({elapsed\\:ss}).", stopwatch.Elapsed);
+    logger.LogInformation("Canceled ({elapsed:ss}).", stopwatch.Elapsed);
     return 130;
 }
 catch (Exception)
