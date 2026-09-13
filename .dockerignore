@@ -1,0 +1,8 @@
+﻿**/.git
+**/.github
+**/.vs
+**/[bB]in
+**/[oO]bj
+**/output
+**/TestResults
+**/*.puml
