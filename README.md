@@ -1,6 +1,11 @@
 ﻿# C4ModelBuilder
 
-Инструмент для автоматической генерации PlantUML диаграммы на основе разметки c# кода.
+Инструмент для автоматической генерации PlantUML диаграммы **C4 Component (уровень 3)** на основе разметки C# кода.
+
+### Требования
+
+- .NET 8 SDK: анализ решения выполняется через Roslyn `MSBuildWorkspace`, поэтому нужен именно SDK, а не только runtime.
+- `npm` (опционально): только для OpenSpec-воркфлоу, `@fission-ai/openspec@1.13.0` (см. раздел «Процесс изменений (OpenSpec)»).
 
 ### Разметка
 
@@ -51,4 +56,48 @@ dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj
 - `C4ModelBuilder.PlantUmlCreator` - построитель диаграмм в формате plantuml на основе результатов анализа.
 - `C4ModelBuilder.Sample.Target` - пример целевого проекта, размеченного атрибутами.
 - `C4ModelBuilder.PlantUmlCreator.Tests` - тесты построителя диаграмм.
-- `C4ModelBuilder.Analyzer.Tests` - тесты анализатора: разбирают собственный солюшен инструмента.
+- `C4ModelBuilder.Analyzer.Tests` - тесты анализатора: собирают in-memory `Solution`
+  (`AdhocWorkspace`) и проверяют модель `InvocationTree`; без `MSBuildWorkspace`,
+  файловой системы и сети.
+
+### Разработка
+
+Сборка и тесты:
+
+```bash
+dotnet build C4ModelBuilder/C4ModelBuilder.sln
+dotnet test C4ModelBuilder/C4ModelBuilder.sln
+```
+
+Конвенции кодирования заданы в `.editorconfig` (UTF-8 с BOM, CRLF, максимум 140 символов в строке);
+архитектурные границы и дисциплина тестов описаны в `AGENTS.md` (этот же файл читают ИИ-агенты).
+
+### Структура репозитория
+
+- `C4ModelBuilder/` - решение `C4ModelBuilder.sln` с проектами, перечисленными выше.
+- `scripts/Invoke-Sample.ps1` - запуск CLI на примере целевого проекта.
+- `openspec/` - спеки (`specs/`), изменения (`changes/`) и конфигурация (`config.yaml`).
+- `AGENTS.md` - контекст и правила для ИИ-агентов.
+- `.github/workflows/` - публикация `C4ModelBuilder.Attributes` в NuGet и CLI-образа в `ghcr.io`.
+- `Dockerfile` - образ CLI: внутри доступна команда `c4builder`, базовый образ на .NET 8 SDK.
+
+### Процесс изменений (OpenSpec)
+
+Поведение инструмента описывают спеки `openspec/specs/<capability>/spec.md`; изменения проходят через
+change-предложения в `openspec/changes/<change>/` (архив - `openspec/changes/archive/`).
+Проектный контекст и правила генерации артефактов заданы в `openspec/config.yaml`.
+
+Файлы интеграции (`.cline/skills/`, `.clinerules/workflows/`) в git не хранятся, поэтому локально
+нужно один раз выполнить:
+
+```bash
+npm i -g @fission-ai/openspec@1.13.0
+openspec init --tools cline
+```
+
+Воркфлоу в Cline: `/opsx-explore` - обсудить замысел, `/opsx-propose <имя>` - создать change с
+артефактами, `/opsx-apply` - реализовать задачи, `/opsx-sync` и `/opsx-update` - синхронизировать
+спеки и поправить артефакты, `/opsx-archive` - заархивировать change после мерджа. Каркас change
+создаёт только CLI: `openspec new change "<имя>"`.
+
+Проверка состояния: `openspec list` (активные изменения) и `openspec doctor`.

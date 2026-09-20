@@ -15,12 +15,14 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   не смешивать.
 - Атрибуты `C4*` — стабильный публичный контракт: имена, `AttributeUsage` и
   семантику без breaking-изменений не менять.
-- Публичный API — двухэтапный: `SolutionAnalyzer.Create(ILogger, Solution, maxDepth)` +
-  `AnalyzeComponents()` → `InvocationTree`, затем
+- Публичный API — двухэтапный: `SolutionAnalyzer.Create(ILogger, Solution, maxDepth,
+  targetProject = null, excludeMask = null, ct = default)` → `SolutionAnalyzer`,
+  затем `AnalyzeComponents(ct)` → `IAsyncEnumerable<InvocationTree>` (по дереву вызовов
+  на каждый root-класс с `[C4Component]`), затем
   `PlantUmlGenerator.Generate(InvocationTree)` → текст PlantUML (единственная
   публичная точка входа генератора).
 - Анализатор принимает Roslyn-`Solution` и не выполняет I/O; открытие `.sln`
-  (`MSBuildWorkspace`) — на стороне вызывающего кода (`Examples`).
+  (`MSBuildWorkspace`) — на стороне вызывающего кода (`C4ModelBuilder.Cli`).
 - Анализатор (`SolutionAnalyzer`/`MethodAnalyzer`) строит и возвращает ПОЛНОЕ
   дерево вызовов (`InvocationTree`) на каждый root-класс и НЕ занимается
   рендером.
@@ -38,6 +40,9 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - Инфраструктура: `C4ModelBuilder.Analyzer/Infrastructure/*.cs`
 - Рендер (публичный фасад + internal-этапы):
   `C4ModelBuilder.PlantUmlCreator/{PlantUmlGenerator,PlantUmlRenderer,InvocationTreeMerger,C4ComponentDiagram}.cs`
+- CLI: `C4ModelBuilder.Cli/Program.cs`, `C4ModelBuilder.Cli/Infrastructure/*.cs`
+  (открытие `.sln` через `MSBuildWorkspace`, DI, разбор аргументов)
+- Запуск CLI на примере: `scripts/Invoke-Sample.ps1`
 - Пример target-проекта/заглушки: `C4ModelBuilder.Sample.Target/*.cs` и `RdsCqrsStubs.cs`
 - Тесты: `C4ModelBuilder.Analyzer.Tests/SolutionAnalyzerTests.cs`,
   `C4ModelBuilder.PlantUmlCreator.Tests/{InvocationTreeMergerTests,PlantUmlRendererTests,PlantUmlGeneratorTests}.cs`
@@ -48,6 +53,8 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - `.editorconfig`: UTF-8 с BOM, CRLF, без trailing whitespace, максимум
   140 символов в строке.
 - Пакеты — только из nuget.org (`nuget.config`); новые зависимости обосновывать.
+- CLI и её Docker-образ требуют .NET SDK, а не только runtime: анализ решения
+  выполняется через Roslyn `MSBuildWorkspace`.
 - Никаких machine-specific абсолютных путей в коде.
 
 ## Сборка и тесты
@@ -75,7 +82,9 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   нескольких слоях) начинаются с change-предложения, а не с правки кода.
 - Воркфлоу в Cline: `/opsx-explore` — обсудить замысел, `/opsx-propose <имя>` — создать
   change с артефактами (proposal, спеки-дельта, design, tasks), `/opsx-apply` — реализовать
-  задачи, `/opsx-archive` — заархивировать change после мерджа.
+  задачи, `/opsx-sync` — перенести дельта-спеки в основные без архивации,
+  `/opsx-update` — поправить артефакты активного change (код не трогает),
+  `/opsx-archive` — заархивировать change после мерджа.
 - Source of truth по поведению — спеки: `openspec/specs/<capability>/spec.md`.
   Активные изменения — `openspec/changes/<change>/`, завершённые —
   `openspec/changes/archive/<дата>-<change>/`.
@@ -94,8 +103,8 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 3. Реализовать, соблюдая границы слоёв и конвенции.
 4. Добавить/обновить NUnit-тесты на наблюдаемый вывод.
 5. Собрать и прогнать тесты.
-6. Обновить README, если изменился набор поддерживаемых C4-уровней или
-   структура проекта.
+6. Обновить README/AGENTS.md, если изменились CLI-опции, набор поддерживаемых
+   C4-уровней, структура проектов или способ подключения OpenSpec.
 
 ## Известные точки внимания
 - Магические строки (имена CQRS-интерфейсов, `HandleAsync`, исключения
