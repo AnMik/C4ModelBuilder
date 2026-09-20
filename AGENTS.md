@@ -41,7 +41,7 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - Пример target-проекта/заглушки: `C4ModelBuilder.Sample.Target/*.cs` и `RdsCqrsStubs.cs`
 - Тесты: `C4ModelBuilder.Analyzer.Tests/SolutionAnalyzerTests.cs`,
   `C4ModelBuilder.PlantUmlCreator.Tests/{InvocationTreeMergerTests,PlantUmlRendererTests,PlantUmlGeneratorTests}.cs`
-- Конституция: `.specify/memory/constitution.md` (локальный, не в git)
+- Спеки и процесс изменений: `openspec/` (`specs/`, `changes/`, `config.yaml`)
 
 ## Технические ограничения
 - .NET 8, современный C#; `Nullable` и `ImplicitUsings` во всех проектах.
@@ -69,9 +69,28 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   `Merge_non_component_nodes_are_collapsed_into_relations_between_components`,
   `Analysis_depth_limits_how_deep_a_call_tree_is_expanded`.
 
+## Процесс изменений (OpenSpec)
+
+- Нетривиальные изменения (новая функциональность, смена публичного контракта, правки в
+  нескольких слоях) начинаются с change-предложения, а не с правки кода.
+- Воркфлоу в Cline: `/opsx-explore` — обсудить замысел, `/opsx-propose <имя>` — создать
+  change с артефактами (proposal, спеки-дельта, design, tasks), `/opsx-apply` — реализовать
+  задачи, `/opsx-archive` — заархивировать change после мерджа.
+- Source of truth по поведению — спеки: `openspec/specs/<capability>/spec.md`.
+  Активные изменения — `openspec/changes/<change>/`, завершённые —
+  `openspec/changes/archive/<дата>-<change>/`.
+- Каркас change создаёт только CLI: `openspec new change "<имя>"`; папки в
+  `openspec/changes/` вручную не создавать.
+- Проектный контекст и правила для воркфлоу — `openspec/config.yaml`
+  (секции `context`, `rules`, `operations`); при смене конвенций обновлять и его.
+- Артефакты интеграции (`.cline/skills/`, `.clinerules/workflows/`) в git не хранятся:
+  локально нужны `npm i -g @fission-ai/openspec@1.13.0` и `openspec init --tools cline`.
+- Состояние проверять командой `openspec list` (активные изменения) и `openspec doctor`.
+
 ## Порядок работы при доработке
-1. Понять задачу и найти затронутый слой (Models/Analyzer/PlantUmlCreator).
-2. Прочитать конституцию и соответствующие тесты/модели.
+1. Понять задачу и найти затронутый слой (Models/Analyzer/PlantUmlCreator);
+   нетривиальные изменения начинать с change-предложения (см. раздел «Процесс изменений (OpenSpec)»).
+2. Прочитать проектный контекст (`openspec/config.yaml`) и соответствующие тесты/модели.
 3. Реализовать, соблюдая границы слоёв и конвенции.
 4. Добавить/обновить NUnit-тесты на наблюдаемый вывод.
 5. Собрать и прогнать тесты.
