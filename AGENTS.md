@@ -34,7 +34,7 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   глобального состояния; одинаковый вход → одинаковый выход.
 
 ## Ключевые файлы
-- Атрибуты: `C4ModelBuilder.Attributes/Attributes/*.cs`
+- Атрибуты: `C4ModelBuilder.Attributes/*.cs` (проект собран под `netstandard2.1`, дефолтный C# 8: блочные namespace, без `ImplicitUsings`)
 - Модели: `C4ModelBuilder.Models/Analysis/InvocationTree.cs`
 - Анализ: `C4ModelBuilder.Analyzer/{SolutionAnalyzer,SolutionParser,MethodAnalyzer,RdsCqrsRequestsAnalyzer}.cs`
 - Инфраструктура: `C4ModelBuilder.Analyzer/Infrastructure/*.cs`
@@ -49,7 +49,9 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - Спеки и процесс изменений: `openspec/` (`specs/`, `changes/`, `config.yaml`)
 
 ## Технические ограничения
-- .NET 8, современный C#; `Nullable` и `ImplicitUsings` во всех проектах.
+- .NET 8, современный C#; `Nullable` и `ImplicitUsings` во всех проектах, кроме
+  `C4ModelBuilder.Attributes` (netstandard2.1, дефолтный C# 8: блочные namespace
+  и явные using).
 - `.editorconfig`: UTF-8 с BOM, CRLF, без trailing whitespace, максимум
   140 символов в строке.
 - Пакеты — только из nuget.org (`nuget.config`); новые зависимости обосновывать.
@@ -112,3 +114,9 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   `RdsCqrsRequestsAnalyzer`; запланирована изоляция/документирование.
 - Реализован только C4-уровень 3 (Component); остальные уровни объявлены
   атрибутами, но не обрабатываются.
+- Семантика попадания элементов на диаграмму неявная: дерево вызовов строится
+  от root-классов (`IsRoot = true`) по вызовам на полях; компонентом становится
+  только узел с непустым `Description`; при вызове через интерфейс атрибуты
+  берутся с класса-реализации, разметка интерфейса игнорируется (если
+  реализация найдена в решении). Правила описаны в README («Как элементы
+  попадают на диаграмму») — при изменении поведения анализатора обновлять их.
