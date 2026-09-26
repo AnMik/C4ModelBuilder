@@ -1,6 +1,6 @@
 ﻿using System.Text;
+using C4ModelBuilder.Attributes;
 using C4ModelBuilder.Models.Analysis;
-using C4ModelBuilder.Models.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;

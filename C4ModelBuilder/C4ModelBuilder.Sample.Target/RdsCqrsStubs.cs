@@ -1,7 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-
-namespace Rds.Cqrs
+﻿namespace Rds.Cqrs
 {
     // Заглушки библиотеки Rds.Cqrs: анализатор распознаёт CQRS-диспетчеризацию
     // по точным именам этих типов.

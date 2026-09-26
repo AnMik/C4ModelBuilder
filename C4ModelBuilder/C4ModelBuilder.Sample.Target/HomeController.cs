@@ -1,6 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using C4ModelBuilder.Models.Attributes;
+﻿using C4ModelBuilder.Attributes;
 
 namespace C4ModelBuilder.Sample.Target
 {
@@ -28,7 +26,7 @@ namespace C4ModelBuilder.Sample.Target
             await _smsGateway.SendAsync("welcome", ct);
             await _queryService.Ask(new GetUsers(), ct);
 
-            System.GC.KeepAlive(users);
+            GC.KeepAlive(users);
         }
     }
 }

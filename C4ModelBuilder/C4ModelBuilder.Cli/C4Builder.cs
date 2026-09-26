@@ -32,6 +32,7 @@ internal sealed class C4Builder(ILogger<C4Builder> logger, IOptions<CliOptions> 
             var extension = options.Value.OutputType switch
             {
                 OutputType.Puml => "puml",
+                OutputType.Mermaid => throw new NotImplementedException(),
                 _ => "puml"
             };
 
