@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using C4ModelBuilder.Models.Attributes;
+﻿using C4ModelBuilder.Attributes;
 
 namespace C4ModelBuilder.Sample.Target
 {

@@ -2,5 +2,6 @@
 
 internal enum OutputType
 {
-    Puml
+    Puml,
+    Mermaid
 }

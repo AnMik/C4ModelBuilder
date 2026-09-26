@@ -1,6 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using C4ModelBuilder.Models.Attributes;
+﻿using C4ModelBuilder.Attributes;
 
 namespace C4ModelBuilder.Sample.Target
 {
@@ -22,7 +20,7 @@ namespace C4ModelBuilder.Sample.Target
             var users = await _userApplication.GetUsersAsync(ct);
             await _smsGateway.SendAsync("promo", ct);
 
-            System.GC.KeepAlive(users);
+            GC.KeepAlive(users);
         }
     }
 }

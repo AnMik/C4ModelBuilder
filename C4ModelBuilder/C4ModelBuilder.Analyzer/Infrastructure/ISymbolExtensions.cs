@@ -1,4 +1,4 @@
-﻿using C4ModelBuilder.Models.Attributes;
+﻿using C4ModelBuilder.Attributes;
 using Microsoft.CodeAnalysis;
 
 namespace C4ModelBuilder.Analyzer.Infrastructure;

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace C4ModelBuilder.Models.Attributes
+namespace C4ModelBuilder.Attributes
 {
     /// <summary>
     /// Level 2
