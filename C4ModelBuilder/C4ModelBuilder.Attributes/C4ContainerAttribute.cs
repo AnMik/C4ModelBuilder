@@ -1,12 +1,21 @@
-﻿namespace C4ModelBuilder.Models.Attributes;
+﻿using System;
 
-/// <summary>
-/// Level 2
-/// </summary>
-[AttributeUsage(AttributeTargets.Class)]
-public class C4ContainerAttribute(string name, string description) : Attribute
+namespace C4ModelBuilder.Models.Attributes
 {
-    public string Name { get; } = name;
+    /// <summary>
+    /// Level 2
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class)]
+    public class C4ContainerAttribute : Attribute
+    {
+        public C4ContainerAttribute(string name, string description)
+        {
+            Name = name;
+            Description = description;
+        }
 
-    public string Description { get; } = description;
+        public string Name { get; }
+
+        public string Description { get; }
+    }
 }
