@@ -15,7 +15,7 @@ internal static class PlantUmlRenderer
 
         sb.AppendLine("@startuml")
           .AppendLine()
-          .AppendLine("!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml")
+          .AppendLine("!include <C4/C4_Component.puml>")
           .AppendLine()
           .AppendLine("AddElementTag(\"repository\", $bgColor=\"#528354\", $fontColor=\"#ffffff\")")
           .AppendLine("AddElementTag(\"gateway\", $bgColor=\"#7b4286\", $fontColor=\"#ffffff\")")

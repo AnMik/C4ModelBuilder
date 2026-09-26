@@ -1,78 +1,33 @@
 ﻿schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# context — краткая выжимка для артефактов; полные конвенции — в AGENTS.md
 context: |
-  C4ModelBuilder — .NET 8 библиотека и CLI: генерирует PlantUML-диаграмму C4 Component
-  (уровень 3) из C#-кода, размеченного атрибутами C4Context (L1), C4Container (L2),
-  C4Component (L3), C4Code (L4). Реализован только уровень 3; атрибуты C4* — стабильный
-  публичный контракт.
+  C4ModelBuilder — .NET 8: PlantUML-диаграмма C4 Component (уровень 3) из C#-кода с
+  атрибутами C4Context/C4Container/C4Component/C4Code. Реализован только уровень 3;
+  атрибуты C4* и публичный API — стабильный контракт без breaking-изменений.
 
-  Архитектурные границы (обязательны):
-  - Пайплайн из трёх стадий: Models → Analyzer → PlantUmlCreator.
-  - Ссылки только в одну сторону: C4ModelBuilder.Models ← (C4ModelBuilder.Analyzer,
-    C4ModelBuilder.PlantUmlCreator); Analyzer и PlantUmlCreator друг на друга не ссылаются.
-  - Между слоями передаются только модели из C4ModelBuilder.Models/Analysis (InvocationTree).
-  - Публичный API: SolutionAnalyzer.Create(ILogger, Solution, maxDepth, targetProject,
-    excludeMask, ct) + AnalyzeComponents(ct) → InvocationTree, затем
-    PlantUmlGenerator.Generate(InvocationTree) → текст PlantUML.
-  - Анализатор не выполняет I/O: Roslyn-Solution открывает вызывающий код (CLI, MSBuildWorkspace).
-  - PlantUmlGenerator.Generate — чистая функция (дерево → текст), без глобального состояния.
+  Границы слоёв: Models ← (Analyzer, PlantUmlCreator); Analyzer и PlantUmlCreator друг на
+  друга не ссылаются; между слоями — только модели Models/Analysis (InvocationTree).
 
-  Конвенции разработки:
-  - Тесты: NUnit; сначала падающий тест, затем реализация; проверяется наблюдаемый результат
-    (точный текст PlantUML или модель C4ComponentDiagram).
-  - Нейминг тестов (стиль Хорикова): <Что_тестируем>_<Сценарий>_<Ожидаемый_результат>,
-    без слова Test, части через "_".
-  - .editorconfig: UTF-8 с BOM, CRLF, максимум 140 символов в строке, без trailing whitespace;
-    Nullable и ImplicitUsings включены во всех проектах.
-  - Пакеты — только с nuget.org (nuget.config); новые зависимости обосновывать.
-  - Никаких machine-specific абсолютных путей в коде; документация — на русском языке.
+  API: SolutionAnalyzer.Create(ILogger, Solution, maxDepth, targetProject, excludeMask, ct) →
+  AnalyzeComponents(ct) → InvocationTree → PlantUmlGenerator.Generate(tree) → текст PlantUML.
+  Анализатор не выполняет I/O; Generate — чистая функция.
 
-  Сборка и проверка:
-  - dotnet build C4ModelBuilder/C4ModelBuilder.sln
-  - dotnet test C4ModelBuilder/C4ModelBuilder.sln
+  Тесты: NUnit, сначала падающий тест, проверяется наблюдаемый результат (текст PlantUML
+  или модель C4ComponentDiagram). Прочие конвенции, стиль и команды — в AGENTS.md.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+# rules — только то, что нужно при создании конкретного артефакта
 rules:
   proposal:
-    - Указывай раздел «Не входит в объём» (non-goals).
-    - Отмечай, затрагивает ли изменение публичный контракт (атрибуты C4*, публичный API).
+    - Включай раздел «Не входит в объём»; отмечай влияние на публичный контракт (атрибуты C4*, публичный API).
   specs:
-    - Описывай наблюдаемое поведение (что генерируется), а не устройство внутренних классов.
-    - Учитывай, что поддерживается только C4-уровень 3 (Component).
+    - Описывай наблюдаемое поведение (что генерируется), а не устройство классов; поддерживается только C4-уровень 3.
   design:
-    - Явно фиксируй, какие границы слоёв (Models/Analyzer/PlantUmlCreator) затрагиваются.
-    - Для новых зависимостей приводи обоснование и альтернативы.
+    - Фиксируй затронутые границы слоёв (Models/Analyzer/PlantUmlCreator); для новых зависимостей — обоснование и альтернативы.
   tasks:
-    - Каждая задача — с проверкой (тест или команда) и объёмом на один сеанс.
-    - Включай задачи на сборку и полный прогон тестов перед завершением.
+    - Каждая задача — с проверкой (тест или команда) и объёмом на один сеанс; перед завершением — сборка и полный прогон тестов.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+# operations — напоминания для apply и archive
 operations:
   apply:
     guidance:

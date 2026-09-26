@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
         <!-- NuGet Package Metadata -->
         <IsPackable>true</IsPackable>
         <PackageId>C4ModelBuilder.Attributes</PackageId>
-        <Version>1.0.0</Version>
+        <Version>2.0.0</Version>
         <Authors>Anatoly Mikryukov</Authors>
         <Description>Attributes for marking C# code to generate C4 Component (Level 3) PlantUML diagrams using C4ModelBuilder.</Description>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>

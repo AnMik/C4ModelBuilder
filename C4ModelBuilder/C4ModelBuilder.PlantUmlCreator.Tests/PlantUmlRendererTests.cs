@@ -152,4 +152,17 @@ public class PlantUmlRendererTests
 
         Assert.That(result, Does.Contain("Component(SmsGateway, \"SmsGateway\", \"External SMS\", $tags=\"gateway\")"));
     }
+
+    [Test]
+    public void Render_uses_builtin_stdlib_include_instead_of_remote_url()
+    {
+        var diagram = new C4ComponentDiagram(
+            Components: [new C4ComponentDiagram.C4Component("MyApp", "MyApp", string.Empty)],
+            Relations: Array.Empty<C4ComponentDiagram.C4Relation>());
+
+        var result = PlantUmlRenderer.Render(diagram);
+
+        Assert.That(result, Does.Contain("!include <C4/C4_Component.puml>"));
+        Assert.That(result, Does.Not.Contain("https://"));
+    }
 }
