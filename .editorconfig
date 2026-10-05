@@ -7,6 +7,19 @@ trim_trailing_whitespace=true
 insert_final_newline=true
 max_line_length = 140
 
+[**/.openspec.yaml]
+# Файл создаёт OpenSpec CLI в собственном формате: LF без BOM — не подгонять под [*]
+charset=utf-8
+end_of_line=lf
+
+[.editorconfig]
+# Файл хранится без BOM; не добавлять его — root = true должен читаться первым ключом
+charset=utf-8
+
+[.gitignore]
+# BOM в начале .gitignore ломает первый шаблон в части версий git
+charset=utf-8
+
 [*.{js,less,scss,css,json,yml,cshtml,html,md}]
 indent_size=2
 indent_style=space
