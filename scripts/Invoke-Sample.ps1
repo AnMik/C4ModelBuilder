@@ -4,6 +4,7 @@
 
 .DESCRIPTION
 Скрипт предназначен для запуска из корневой папки репозитория.
+Отсутствующий каталог вывода создаётся автоматически: CLI ожидает существующий каталог.
 #>
 
 [CmdletBinding()]
@@ -26,6 +27,11 @@ $cliProjectPath = 'C4ModelBuilder\C4ModelBuilder.Cli\C4ModelBuilder.Cli.csproj'
 if (-not (Test-Path $SolutionPath)) {
     Write-Error "Файл решения не найден по пути '$SolutionPath'. Убедитесь, что скрипт запущен из корневой папки репозитория."
     exit 1
+}
+
+if (-not (Test-Path $OutputPath)) {
+    $null = New-Item -ItemType Directory -Path $OutputPath -Force
+    Write-Host "Создан каталог вывода: $OutputPath"
 }
 
 $cliArgs = @(

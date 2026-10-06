@@ -2,7 +2,7 @@
 
 namespace C4ModelBuilder.Sample.Target
 {
-    [C4Component(Description = "User business logic")]
+    [C4Component("User business logic")]
     public sealed class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;

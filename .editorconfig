@@ -559,7 +559,7 @@ dotnet_diagnostic.ca5350.severity=warning
 # https://docs.microsoft.com/ru-ru/visualstudio/code-quality/ca5351?view=vs-2019
 dotnet_diagnostic.ca5351.severity=warning
 # CS8625: Cannot convert null literal to non-nullable reference type.
-dotnet_diagnostic.cs8625.severity=warning
+dotnet_diagnostic.cs8625.severity=error
 
 # Do not lock on objects with weak identity
 # https://docs.microsoft.com/ru-ru/visualstudio/code-quality/ca2002?view=vs-2019

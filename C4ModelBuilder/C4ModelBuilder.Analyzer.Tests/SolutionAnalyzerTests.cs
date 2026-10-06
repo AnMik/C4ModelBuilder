@@ -381,7 +381,7 @@ public class SolutionAnalyzerTests
             {
             }
 
-            [C4Component(Description = "CQRS handler for GetUsers query")]
+            [C4Component("CQRS handler for GetUsers query")]
             public sealed class GetUsersHandler : Rds.Cqrs.Queries.IQueryHandler<GetUsers, User[]>
             {
                 private readonly IUserApplication _userApplication;
@@ -411,14 +411,14 @@ public class SolutionAnalyzerTests
                 Task<User[]> FetchAll(CancellationToken ct);
             }
 
-            [C4Component(Description = "External SMS gateway")]
+            [C4Component("External SMS gateway")]
             public interface ISmsGateway
             {
-                [C4Component(Description = "Send SMS message")]
+                [C4Component("Send SMS message")]
                 Task SendAsync(string message, CancellationToken ct);
             }
 
-            [C4Component(Description = "User application use-case layer")]
+            [C4Component("User application use-case layer")]
             public sealed class UserApplication : IUserApplication
             {
                 private readonly IUserService _userService;
@@ -428,7 +428,7 @@ public class SolutionAnalyzerTests
                 public Task<User[]> GetUsersAsync(CancellationToken ct) => _userService.GetUsersAsync(ct);
             }
 
-            [C4Component(Description = "User business logic")]
+            [C4Component("User business logic")]
             public sealed class UserService : IUserService
             {
                 private readonly IUserRepository _userRepository;
@@ -438,24 +438,24 @@ public class SolutionAnalyzerTests
                 public Task<User[]> GetUsersAsync(CancellationToken ct) => _userRepository.GetAll(ct);
             }
 
-            [C4Component(Description = "User data repository")]
+            [C4Component("User data repository")]
             public sealed class UserRepository : IUserRepository
             {
                 private readonly IUserDataSource _userDataSource;
 
                 public UserRepository(IUserDataSource userDataSource) => _userDataSource = userDataSource;
 
-                [C4Component(Description = "Fetch all users from data source")]
+                [C4Component("Fetch all users from data source")]
                 public Task<User[]> GetAll(CancellationToken ct) => _userDataSource.FetchAll(ct);
             }
 
-            [C4Component(Description = "User data source (DB)")]
+            [C4Component("User data source (DB)")]
             public sealed class UserDataSource : IUserDataSource
             {
                 public Task<User[]> FetchAll(CancellationToken ct) => Task.FromResult(Array.Empty<User>());
             }
 
-            [C4Component(IsRoot = true, Description = "Main page: list users and send welcome")]
+            [C4Component("Main page: list users and send welcome", isRoot: true)]
             public sealed class HomeController
             {
                 private readonly Rds.Cqrs.Queries.IQueryService _queryService;
@@ -472,7 +472,7 @@ public class SolutionAnalyzerTests
                     _smsGateway = smsGateway;
                 }
 
-                [C4Component(Description = "Get users list with welcome message")]
+                [C4Component("Get users list with welcome message")]
                 public async Task GetUsersAsync(CancellationToken ct)
                 {
                     var users = await _userApplication.GetUsersAsync(ct);
@@ -483,7 +483,7 @@ public class SolutionAnalyzerTests
                 }
             }
 
-            [C4Component(IsRoot = true, Description = "Admin page: send promo campaigns")]
+            [C4Component("Admin page: send promo campaigns", isRoot: true)]
             public sealed class AdminController
             {
                 private readonly IUserApplication _userApplication;
@@ -495,7 +495,7 @@ public class SolutionAnalyzerTests
                     _smsGateway = smsGateway;
                 }
 
-                [C4Component(Description = "Send promo campaign via SMS")]
+                [C4Component("Send promo campaign via SMS")]
                 public async Task SendPromoAsync(CancellationToken ct)
                 {
                     var users = await _userApplication.GetUsersAsync(ct);
@@ -505,7 +505,7 @@ public class SolutionAnalyzerTests
                 }
             }
 
-            [C4Component(IsRoot = true, Description = "Cache that uses a framework collection")]
+            [C4Component("Cache that uses a framework collection", isRoot: true)]
             public sealed class CacheController
             {
                 private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _cache = new();
@@ -513,12 +513,12 @@ public class SolutionAnalyzerTests
                 public string Get(string key) => _cache.GetOrAdd(key, static k => k);
             }
 
-            [C4Component(Description = "Query without a handler")]
+            [C4Component("Query without a handler")]
             public sealed class GetStats : Rds.Cqrs.IQuery
             {
             }
 
-            [C4Component(IsRoot = true, Description = "Controller with unresolved CQRS request")]
+            [C4Component("Controller with unresolved CQRS request", isRoot: true)]
             public sealed class StatsController
             {
                 private readonly Rds.Cqrs.Queries.IQueryService _queryService;
@@ -546,13 +546,13 @@ public class SolutionAnalyzerTests
             {
             }
 
-            [C4Component(Description = "Handler for GetFoo")]
+            [C4Component("Handler for GetFoo")]
             public sealed class FooHandler : Rds.Cqrs.Queries.IQueryHandler<GetFoo, GetBar>
             {
                 public Task<GetBar> HandleAsync(GetFoo query, CancellationToken ct) => Task.FromResult(new GetBar());
             }
 
-            [C4Component(IsRoot = true, Description = "Root controller for GetFoo")]
+            [C4Component("Root controller for GetFoo", isRoot: true)]
             public sealed class FooController
             {
                 private readonly Rds.Cqrs.Queries.IQueryService _queryService;
@@ -562,7 +562,7 @@ public class SolutionAnalyzerTests
                 public async Task RunAsync(CancellationToken ct) => await _queryService.Ask(new GetFoo(), ct);
             }
 
-            [C4Component(IsRoot = true, Description = "Root controller for GetBar")]
+            [C4Component("Root controller for GetBar", isRoot: true)]
             public sealed class BarController
             {
                 private readonly Rds.Cqrs.Queries.IQueryService _queryService;
@@ -595,7 +595,7 @@ public class SolutionAnalyzerTests
                 }
             }
 
-            [C4Component(IsRoot = true, Description = "Root controller calling a nested widget")]
+            [C4Component("Root controller calling a nested widget", isRoot: true)]
             public sealed class WidgetController
             {
                 private readonly IWidget _widget;
@@ -620,19 +620,19 @@ public class SolutionAnalyzerTests
                 Task NotifyAsync(CancellationToken ct);
             }
 
-            [C4Component(Description = "First notifier implementation")]
+            [C4Component("First notifier implementation")]
             public sealed class FirstNotifier : INotifier
             {
                 public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
             }
 
-            [C4Component(Description = "Second notifier implementation")]
+            [C4Component("Second notifier implementation")]
             public sealed class SecondNotifier : INotifier
             {
                 public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
             }
 
-            [C4Component(IsRoot = true, Description = "Root controller notifying")]
+            [C4Component("Root controller notifying", isRoot: true)]
             public sealed class NotifyController
             {
                 private readonly INotifier _notifier;
@@ -661,13 +661,13 @@ public class SolutionAnalyzerTests
             {
             }
 
-            [C4Component(Description = "Email notifier")]
+            [C4Component("Email notifier")]
             public sealed class EmailNotifier : IEmailNotifier
             {
                 public Task NotifyAsync(CancellationToken ct) => Task.CompletedTask;
             }
 
-            [C4Component(IsRoot = true, Description = "Root controller requiring the base notifier")]
+            [C4Component("Root controller requiring the base notifier", isRoot: true)]
             public sealed class BaseNotifyController
             {
                 private readonly INotifier _notifier;
@@ -692,7 +692,7 @@ public class SolutionAnalyzerTests
                 Task NotifyAsync(CancellationToken ct);
             }
 
-            [C4Component(IsRoot = true, Description = "Root controller without a notifier implementation")]
+            [C4Component("Root controller without a notifier implementation", isRoot: true)]
             public sealed class OrphanNotifyController
             {
                 private readonly INotifier _notifier;
@@ -738,7 +738,7 @@ public class SolutionAnalyzerTests
 
         namespace Sample
         {
-            [C4Component(IsRoot = true, Description = "Root controller using the beta notifier")]
+            [C4Component("Root controller using the beta notifier", isRoot: true)]
             public sealed class BetaNotifyController
             {
                 private readonly Sample.Beta.INotifier _notifier;
