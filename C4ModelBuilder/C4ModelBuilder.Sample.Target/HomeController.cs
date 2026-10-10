@@ -2,7 +2,7 @@
 
 namespace C4ModelBuilder.Sample.Target
 {
-    [C4Component(IsRoot = true, Description = "Main page: list users and send welcome")]
+    [C4Component("Main page: list users and send welcome", isRoot: true)]
     public sealed class HomeController
     {
         private readonly Rds.Cqrs.Queries.IQueryService _queryService;
@@ -19,7 +19,7 @@ namespace C4ModelBuilder.Sample.Target
             _smsGateway = smsGateway;
         }
 
-        [C4Component(Description = "Get users list with welcome message")]
+        [C4Component("Get users list with welcome message")]
         public async Task GetUsersAsync(CancellationToken ct)
         {
             var users = await _userApplication.GetUsersAsync(ct);

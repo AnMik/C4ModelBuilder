@@ -12,7 +12,7 @@ public sealed class InvocationTree(string nodeName, string? c4ComponentDescripti
     public string NodeName { get; } = nodeName;
 
     /// <summary>
-    /// Данные атрибута, если на узле проставлен атрибут <see cref="C4ModelBuilder.Models.Attributes.C4ComponentAttribute"/>.
+    /// Данные атрибута <c>C4Component</c>, если он проставлен на узле.
     /// </summary>
     public string? C4ComponentDescription { get; } = c4ComponentDescription;
 

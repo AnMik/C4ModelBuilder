@@ -2,7 +2,7 @@
 
 namespace C4ModelBuilder.Sample.Target
 {
-    [C4Component(IsRoot = true, Description = "Admin page: send promo campaigns")]
+    [C4Component("Admin page: send promo campaigns", isRoot: true)]
     public sealed class AdminController
     {
         private readonly IUserApplication _userApplication;
@@ -14,7 +14,7 @@ namespace C4ModelBuilder.Sample.Target
             _smsGateway = smsGateway;
         }
 
-        [C4Component(Description = "Send promo campaign via SMS")]
+        [C4Component("Send promo campaign via SMS")]
         public async Task SendPromoAsync(CancellationToken ct)
         {
             var users = await _userApplication.GetUsersAsync(ct);

@@ -2,7 +2,7 @@
 
 namespace C4ModelBuilder.Sample.Target
 {
-    [C4Component(Description = "CQRS handler for GetUsers query")]
+    [C4Component("CQRS handler for GetUsers query")]
     public sealed class GetUsersHandler : Rds.Cqrs.Queries.IQueryHandler<GetUsers, User[]>
     {
         private readonly IUserApplication _userApplication;
