@@ -32,8 +32,11 @@
 6. Описание берётся от **класса**, а не от интерфейса.
 7. Описание от интерфейса берётся только если класс-реализация не найден в решении.
 8. Узлы с описанием `null` на диаграмму не попадают — они используются только для построения промежуточного дерева вызовов.
-9. Вызовы CQRS через `Rds.Cqrs.Queries.IQueryService` / `Rds.Cqrs.Commands.ICommandProcessor` резолвятся в обработчики запросов.
-10. Поля типов `IMapper` и `ITaggableCache` игнорируются.
+9. Вызов метода своего класса (`ClassX.MethodA` вызывает другой метод того же класса) связывает вызывающий
+   метод с вызванным (`ClassX.MethodA → ClassX.MethodB`), а класс остаётся компонентом-предком обоих методов;
+   связь вызывающего метода с классом не создаётся.
+10. Вызовы CQRS через `Rds.Cqrs.Queries.IQueryService` / `Rds.Cqrs.Commands.ICommandProcessor` резолвятся в обработчики запросов.
+11. Поля типов `IMapper` и `ITaggableCache` игнорируются.
 
 ## Параметры командной строки (CLI)
 
@@ -49,10 +52,45 @@
 | `--exclude` | `-e` | `string` | Нет | — | Маска исключаемых из анализа проектов (например, `*tests` или `*Sample*`). |
 | `--log-level` | `-l` | `LogLevel` | Нет | `Warning` | Минимальный уровень логирования (`Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`). |
 
+### Версия и справка
+
+Флаги `--version`, `--help` и `-h` предоставляет библиотека разбора аргументов, поэтому в таблице
+параметров их нет:
+
+| Аргумент | Псевдоним | Описание |
+| - | - | - |
+| `--version` | — | Печатает версию инструмента и завершается с кодом `0`, не выполняя анализ. |
+| `--help` | `-h` | Печатает справку с перечнем параметров и завершается с кодом `0`. |
+
+`--version` нельзя сочетать с другими параметрами: `--version -s <решение> -o <каталог>` даёт сообщение об
+ошибке и код `1`.
+
+Версия CLI задаётся свойством `<Version>` в `C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj` и не связана с
+версией контракта разметки (`C4ModelBuilder.Attributes`). Проверить версию локально:
+
+```bash
+dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj -- --version
+```
+
 ### Пример прямого запуска через `dotnet run`
 
 ```bash
 dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj -- -s "C4ModelBuilder/C4ModelBuilder.sln" -o "output" -d 16 -t puml -l Information
+```
+
+## Контейнерный образ
+
+Workflow `publish-cli-docker.yml` читает версию из `<Version>` в `C4ModelBuilder.Cli.csproj` и публикует
+образ с двумя тегами в `ghcr.io`: `X.Y.Z` (версия сборки) и `latest`. Повторный диспатч на уже
+существующий тег его не перезаписывает — версию поднимают в `.csproj`.
+
+Та же версия попадает в метки образа: `org.opencontainers.image.version`, `...revision` (SHA коммита) и
+`...source` (URL репозитория). Локальная проверка:
+
+```bash
+docker build --build-arg VERSION=1.1.0 -t c4builder-cli:local .
+docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' c4builder-cli:local
+docker run --rm c4builder-cli:local --version
 ```
 
 ## Структура репозитория

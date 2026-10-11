@@ -63,6 +63,20 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   выполняется через Roslyn `MSBuildWorkspace`.
 - Никаких machine-specific абсолютных путей в коде.
 
+## Версии и релиз
+
+- Две независимые шкалы: `C4ModelBuilder.Attributes` — версия контракта разметки (`3.x`),
+  `C4ModelBuilder.Cli` — версия поведения инструмента (`1.x`). Правка поведения CLI или содержимого
+  диаграммы поднимает CLI и не двигает атрибуты: иначе релиз пакета уходил бы без изменений в пакете.
+- Единственный источник версии CLI — `<Version>` в
+  `C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj`. Без MinVer/GitVersion: `.dockerignore`
+  исключает `**/.git`, истории в сборке образа нет. Версия наблюдаема в `--version`, в
+  `InformationalVersion` сборки и в теге/метке образа.
+- Порядок релиза CLI: bump `<Version>` в `.csproj` → коммит → тег `cli-vX.Y.Z` (пространство `vX.Y.Z`
+  занято пакетом разметки) → диспатч `.github/workflows/publish-cli-docker.yml` → в `ghcr.io` появляются
+  теги `X.Y.Z` и `latest`. Уже опубликованный тег не перезаписываем — версию поднимаем.
+- Проекты `C4ModelBuilder.Models`, `Analyzer`, `PlantUmlCreator` не публикуются и версии не ведут.
+
 ## Сборка и тесты
 - Сборка: `dotnet build C4ModelBuilder/C4ModelBuilder.sln`
 - Тесты: `dotnet test C4ModelBuilder/C4ModelBuilder.sln`
@@ -148,6 +162,15 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 - Порядок компонентов и связей в `.puml` определяется обходом `HashSet`
   (`InvocationTreeMerger`) и случайным хешированием строк — между запусками порядок строк
   может отличаться. Контрактом порядок не считается, поэтому побайтовые проверки недопустимы.
+- Флаги `--version`, `--help`, `-h` обслуживает `System.CommandLine` (`Program.Run` назначает действие
+  команды через `SetAction` и вызывает `ParseResult.InvokeAsync`), поэтому формат справки и версии
+  контрактом не является. Разбор — подчинённый шаг `Program.Run`:
+  `CliArgumentsParser.CreateRootCommand()` описывает поверхность команды, `ReadOptions(ParseResult)`
+  читает значения, действие назначает вызывающий код. Действие
+  версии объявлено с `ClearsParseErrors => true` и молча подавляет собственную ошибку «`--version option
+  cannot be combined with other arguments.`», поэтому `Program` перед `InvokeAsync` сам печатает ошибки
+  разбора и возвращает `1`, когда ошибки есть, а выбранное действие — не `ParseErrorAction`
+  (требование спеки `cli-tool`).
 - Проекта `C4ModelBuilder.Cli.Tests` не существует: поведение CLI подтверждается инспекцией
   кода, а не тестами. Тесты запускает `ci.yml` (push в `main`, pull request, ручной запуск),
   а в публикующих workflow их прогоняет джоба `tests`, от которой зависит публикующая джоба

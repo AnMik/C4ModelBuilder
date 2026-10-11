@@ -72,13 +72,15 @@ public class SolutionAnalyzerTests
         var names = NodeNames(tree);
         Assert.That(names, Does.Not.Contain("HomeController"));
         Assert.That(names, Is.SupersetOf(new[] {
-            "AdminController", "AdminController.SendPromoAsync", "UserApplication", "UserService",
-            "UserRepository", "UserRepository.GetAll", "UserDataSource", "ISmsGateway", "ISmsGateway.SendAsync" }));
+            "AdminController", "AdminController.SendPromoAsync", "AdminController.SendOneAsync", "UserApplication",
+            "UserService", "UserRepository", "UserRepository.GetAll", "UserDataSource", "ISmsGateway",
+            "ISmsGateway.SendAsync" }));
 
         AssertDescriptions(
             tree,
             ("AdminController", "Admin page: send promo campaigns"),
-            ("AdminController.SendPromoAsync", "Send promo campaign via SMS"));
+            ("AdminController.SendPromoAsync", "Send promo campaign via SMS"),
+            ("AdminController.SendOneAsync", "Send one SMS message"));
     }
 
     [Test]
@@ -250,6 +252,48 @@ public class SolutionAnalyzerTests
 
         Assert.That(names, Does.Contain("BetaNotifier"));
         Assert.That(names, Does.Not.Contain("AlphaNotifier"));
+    }
+
+    [Test]
+    public async Task Analysis_marks_a_call_to_a_method_of_the_same_class_as_a_return_to_the_same_class()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
+            CreateSolution(workspace, ("Sample.cs", SameClassCallScenario)),
+            maxDepth: 15);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "BasketController").FirstAsync(Ct);
+
+        var sameClassCall = FindNode(tree, "BasketController.RecalculateAsync")
+                            .Invocations
+                            .Single(child => child.NodeName == "BasketController");
+
+        Assert.That(sameClassCall.IsSameClassCall, Is.True);
+        Assert.That(sameClassCall.Invocations.Single().NodeName, Is.EqualTo("BasketController.ValidateAsync"));
+    }
+
+    [Test]
+    public async Task Analysis_does_not_mark_a_return_through_another_component()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
+            CreateSolution(workspace, ("Sample.cs", ReturnThroughAnotherComponentScenario)),
+            maxDepth: 15);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "OrderController").FirstAsync(Ct);
+
+        var returnToOrderController = FindNode(tree, "PaymentService.PayAsync")
+                                      .Invocations
+                                      .Single(child => child.NodeName == "OrderController");
+
+        Assert.That(returnToOrderController.IsSameClassCall, Is.False);
+        Assert.That(
+            returnToOrderController.Invocations.Single().NodeName,
+            Is.EqualTo("OrderController.CompleteAsync"));
     }
 
     private static Solution CreateSampleSolution(AdhocWorkspace workspace)
@@ -499,9 +543,15 @@ public class SolutionAnalyzerTests
                 public async Task SendPromoAsync(CancellationToken ct)
                 {
                     var users = await _userApplication.GetUsersAsync(ct);
-                    await _smsGateway.SendAsync("promo", ct);
+                    await SendOneAsync("promo", ct);
 
                     GC.KeepAlive(users);
+                }
+
+                [C4Component("Send one SMS message")]
+                private async Task SendOneAsync(string message, CancellationToken ct)
+                {
+                    await _smsGateway.SendAsync(message, ct);
                 }
             }
 
@@ -746,6 +796,61 @@ public class SolutionAnalyzerTests
                 public BetaNotifyController(Sample.Beta.INotifier notifier) => _notifier = notifier;
 
                 public async Task RunAsync(CancellationToken ct) => await _notifier.NotifyAsync(ct);
+            }
+        }
+        """;
+
+    private const string SameClassCallScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Attributes;
+
+        namespace Sample
+        {
+            [C4Component("Root controller with a call to its own method", isRoot: true)]
+            public sealed class BasketController
+            {
+                [C4Component("Recalculate the basket")]
+                public async Task RecalculateAsync(CancellationToken ct) => await ValidateAsync(ct);
+
+                [C4Component("Validate the basket")]
+                private Task ValidateAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+        }
+        """;
+
+    private const string ReturnThroughAnotherComponentScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Attributes;
+
+        namespace Sample
+        {
+            [C4Component("Orders page", isRoot: true)]
+            public sealed class OrderController
+            {
+                private readonly PaymentService _paymentService;
+
+                public OrderController(PaymentService paymentService) => _paymentService = paymentService;
+
+                [C4Component("Pay for the order")]
+                public async Task PayAsync(CancellationToken ct) => await _paymentService.PayAsync(ct);
+
+                [C4Component("Complete the order")]
+                public Task CompleteAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+
+            [C4Component("Payment service")]
+            public sealed class PaymentService
+            {
+                private readonly OrderController _orderController;
+
+                public PaymentService(OrderController orderController) => _orderController = orderController;
+
+                [C4Component("Process the payment")]
+                public async Task PayAsync(CancellationToken ct) => await _orderController.CompleteAsync(ct);
             }
         }
         """;

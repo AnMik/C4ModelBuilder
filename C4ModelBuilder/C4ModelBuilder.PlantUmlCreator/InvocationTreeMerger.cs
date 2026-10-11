@@ -5,7 +5,8 @@ namespace C4ModelBuilder.PlantUmlCreator;
 /// <summary>
 /// Схлопывает дерево вызовов <see cref="InvocationTree"/> в модель диаграммы <see cref="C4ComponentDiagram"/>:
 /// узлы без атрибута C4Component пропускаются, а связи протягиваются между ближайшими
-/// компонентами-предками; связи компонента с самим собой не создаются,
+/// компонентами-предками; узел-обёртка вызова метода своего класса прозрачен — связь идёт к вызванному
+/// методу, а сам класс остаётся компонентом-предком; связи компонента с самим собой не создаются,
 /// дубликаты компонентов и связей устраняются.
 /// </summary>
 internal static class InvocationTreeMerger
@@ -35,7 +36,19 @@ internal static class InvocationTreeMerger
                 components.Add(signature);
                 descriptions[signature] = node.C4ComponentDescription;
 
-                if (nearestComponentAncestor != null && nearestComponentAncestor != signature)
+                if (node.IsSameClassCall)
+                {
+                    // Обёртка вызова метода своего класса прозрачна для связей: концом связи становится
+                    // вызванный метод, а класс этой связи остаётся компонентом-предком содержимого вызова.
+                    foreach (var child in node.Invocations.Where(child => child.C4ComponentDescription != null))
+                    {
+                        if (nearestComponentAncestor != null && nearestComponentAncestor != child.NodeName)
+                        {
+                            relations.Add((From: nearestComponentAncestor, To: child.NodeName));
+                        }
+                    }
+                }
+                else if (nearestComponentAncestor != null && nearestComponentAncestor != signature)
                 {
                     relations.Add((From: nearestComponentAncestor, To: signature));
                 }

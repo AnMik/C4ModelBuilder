@@ -25,6 +25,7 @@ internal sealed class MethodAnalyzer(
         }
 
         var methodSemanticModel = parsedSolution.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree);
+        var currentClassSymbol = parsedSolution.GetDeclaredSymbols(classMethod).ClassSymbol;
 
         var currentMethodNode = new InvocationTree(
             nodeName: classMethod.Name,
@@ -35,9 +36,17 @@ internal sealed class MethodAnalyzer(
 
         foreach (var invokedMethod in GetInvokedMethods(classMethod, methodSemanticModel))
         {
+            var isSameClassCall = invokedMethod.ClassMethod != null
+                                  && SymbolEqualityComparer.Default.Equals(
+                                      parsedSolution.GetDeclaredSymbols(invokedMethod.ClassMethod).ClassSymbol,
+                                      currentClassSymbol);
+
             var invokedClassNode = new InvocationTree(
                 nodeName: invokedMethod.ClassName,
-                c4ComponentDescription: invokedMethod.ClassDescription);
+                c4ComponentDescription: invokedMethod.ClassDescription)
+            {
+                IsSameClassCall = isSameClassCall,
+            };
 
             var invokedMethodNode = invokedMethod.ClassMethod != null
                 ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)

@@ -2,6 +2,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
+# Версия инструмента: workflow передаёт её из <Version> в C4ModelBuilder.Cli.csproj
+ARG VERSION=0.0.0-dev
+
 # Копируем проекты для оптимизации кэширования слоев
 COPY ["C4ModelBuilder/C4ModelBuilder.sln", "C4ModelBuilder/"]
 COPY ["C4ModelBuilder/C4ModelBuilder.Models/C4ModelBuilder.Models.csproj", "C4ModelBuilder/C4ModelBuilder.Models/"]
@@ -15,11 +18,20 @@ RUN dotnet restore "C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj"
 # Копируем исходники и собираем проект
 COPY . .
 WORKDIR "/src/C4ModelBuilder/C4ModelBuilder.Cli"
-RUN dotnet publish "C4ModelBuilder.Cli.csproj" -c Release -o /app/publish /p:UseAppHost=false --no-restore
+RUN dotnet publish "C4ModelBuilder.Cli.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:Version=$VERSION --no-restore
 
 # Этап 2: Финальный образ (требуется dotnet SDK для работы Roslyn MSBuildWorkspace)
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS final
 WORKDIR /app
+
+# Метаданные версии образа: приходят из workflow как build-args
+ARG VERSION=0.0.0-dev
+ARG REVISION=""
+ARG SOURCE=""
+
+LABEL org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.source="$SOURCE"
 
 # Отключаем телеметрию и лишний вывод от SDK
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \

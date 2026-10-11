@@ -17,6 +17,12 @@ public sealed class InvocationTree(string nodeName, string? c4ComponentDescripti
     public string? C4ComponentDescription { get; } = c4ComponentDescription;
 
     /// <summary>
+    /// Признак того, что узел создан для вызова метода своего класса: такой узел не становится
+    /// концом связи, а связь устанавливается между вызывающим компонентом и вызванным методом.
+    /// </summary>
+    public bool IsSameClassCall { get; init; }
+
+    /// <summary>
     /// Дочерние узлы — вызовы методов из текущего метода.
     /// </summary>
     public IReadOnlyList<InvocationTree> Invocations { get; } = new List<InvocationTree>();
