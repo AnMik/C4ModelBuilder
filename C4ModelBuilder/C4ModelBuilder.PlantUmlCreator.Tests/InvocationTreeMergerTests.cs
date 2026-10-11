@@ -202,6 +202,50 @@ public class InvocationTreeMergerTests
         AssertRelations(diagram, ("AccountController", "UserService"));
     }
 
+    [Test]
+    public void Merge_return_to_the_same_class_relates_the_calling_method_to_the_called_one()
+    {
+        var root = new InvocationTree("ClassX", c4ComponentDescription: "Class description");
+        var methodA = new InvocationTree("ClassX.MethodA", c4ComponentDescription: "Method A description");
+        var sameClassCall = new InvocationTree("ClassX", c4ComponentDescription: "Class description")
+        {
+            IsSameClassCall = true,
+        };
+        var methodB = new InvocationTree("ClassX.MethodB", c4ComponentDescription: "Method B description");
+        sameClassCall.AddInvocation(methodB);
+        methodA.AddInvocation(sameClassCall);
+        root.AddInvocation(methodA);
+
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
+
+        AssertComponents(diagram, "ClassX", "ClassX.MethodA", "ClassX.MethodB");
+        AssertRelations(
+            diagram,
+            ("ClassX", "ClassX.MethodA"),
+            ("ClassX", "ClassX.MethodB"),
+            ("ClassX.MethodA", "ClassX.MethodB"));
+    }
+
+    [Test]
+    public void Merge_return_to_the_same_class_without_component_target_keeps_only_ownership_relation()
+    {
+        var root = new InvocationTree("ClassX", c4ComponentDescription: "Class description");
+        var methodA = new InvocationTree("ClassX.MethodA", c4ComponentDescription: "Method A description");
+        var sameClassCall = new InvocationTree("ClassX", c4ComponentDescription: "Class description")
+        {
+            IsSameClassCall = true,
+        };
+        var helper = new InvocationTree("ClassX.Helper", c4ComponentDescription: null);
+        sameClassCall.AddInvocation(helper);
+        methodA.AddInvocation(sameClassCall);
+        root.AddInvocation(methodA);
+
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
+
+        AssertComponents(diagram, "ClassX", "ClassX.MethodA");
+        AssertRelations(diagram, ("ClassX", "ClassX.MethodA"));
+    }
+
     private static void AssertComponents(C4ComponentDiagram diagram, params string[] expected)
     {
         var actual = diagram.Components.Select(component => component.ComponentAlias).ToHashSet();

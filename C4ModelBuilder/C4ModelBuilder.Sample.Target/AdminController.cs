@@ -18,9 +18,15 @@ namespace C4ModelBuilder.Sample.Target
         public async Task SendPromoAsync(CancellationToken ct)
         {
             var users = await _userApplication.GetUsersAsync(ct);
-            await _smsGateway.SendAsync("promo", ct);
+            await SendOneAsync("promo", ct);
 
             GC.KeepAlive(users);
+        }
+
+        [C4Component("Send one SMS message")]
+        private async Task SendOneAsync(string message, CancellationToken ct)
+        {
+            await _smsGateway.SendAsync(message, ct);
         }
     }
 }

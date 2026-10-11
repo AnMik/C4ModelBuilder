@@ -63,4 +63,25 @@ public class PlantUmlGeneratorTests
                 "Rel(GetStoredPaymentCardsViewModelConstructor, GetStoredPaymentCardsViewModelConstructor, \"\")"));
         Assert.That(result, Does.Contain("Rel(AccountController, GetStoredPaymentCardsViewModelConstructor, \"\")"));
     }
+
+    [Test]
+    public void Generator_renders_a_call_to_a_method_of_the_same_class_as_a_relation_between_the_methods()
+    {
+        var tree = new InvocationTree("ClassX", c4ComponentDescription: "Class description");
+        var methodA = new InvocationTree("ClassX.MethodA", c4ComponentDescription: "Method A description");
+        var sameClassCall = new InvocationTree("ClassX", c4ComponentDescription: "Class description")
+        {
+            IsSameClassCall = true,
+        };
+        var methodB = new InvocationTree("ClassX.MethodB", c4ComponentDescription: "Method B description");
+        sameClassCall.AddInvocation(methodB);
+        methodA.AddInvocation(sameClassCall);
+        tree.AddInvocation(methodA);
+
+        var result = PlantUmlGenerator.Generate(tree);
+
+        Assert.That(result, Does.Contain("Rel(ClassX.MethodA, ClassX.MethodB, \"\")"));
+        Assert.That(result, Does.Contain("Rel(ClassX, ClassX.MethodB, \"\")"));
+        Assert.That(result, Does.Not.Contain("Rel(ClassX.MethodA, ClassX, \"\")"));
+    }
 }

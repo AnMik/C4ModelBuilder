@@ -38,9 +38,10 @@ downstream_components` — связь от класса к downstream-компо
 
 ## Decisions
 
-**1. Признак ставит анализатор, а не генератор.** Узел-обёртка получает признак «возврат в свой
-класс», если вызывающий и вызываемый методы принадлежат одному классу
-(`invokedMethod.ClassName == classMethod.ClassSyntax.Identifier.Text` в момент создания обёртки).
+**1. Признак ставит анализатор, а не генератор.** Узел-обёртка получает признак «вызов метода своего
+класса», если вызывающий и вызываемый методы принадлежат одному классу (сравниваются символы классов:
+`SymbolEqualityComparer`) в момент создания обёртки. Сравнение по символам, а не по простому имени,
+исключает ложное срабатывание для одноимённых классов из разных пространств имён.
 
 Альтернативы: вывод признака в `InvocationTreeMerger` из имён узлов (класс как родитель узла
 `ClassX.<Метод>`) — отвергнуто как хрупкое: имя перестало бы быть только отображением. Проверка в
@@ -49,7 +50,7 @@ downstream_components` — связь от класса к downstream-компо
 необходимого, гася настоящие взаимные зависимости (`ClassX → UserRepository → ClassX`).
 
 **2. Признак живёт в `InvocationTree` как аддитивное `init`-свойство.**
-`public bool IsReturnToEnclosingClass { get; init; }` (имя уточняется при реализации), конструктор и
+`public bool IsSameClassCall { get; init; }` (имя выбрано при реализации), конструктор и
 остальные члены не меняются.
 
 Почему так: `Models/Analysis` — единственный разрешённый канал данных между анализом и рендером, а
@@ -76,7 +77,7 @@ if (node.C4ComponentDescription != null)
     components.Add(signature);
     descriptions[signature] = node.C4ComponentDescription;
 
-    if (node.IsReturnToEnclosingClass)
+    if (node.IsSameClassCall)
     {
         // Обёртка своего класса: концом связи становится вызванный метод, а не класс.
         foreach (var child in node.Invocations.Where(child => child.C4ComponentDescription != null))
@@ -140,5 +141,6 @@ if (node.C4ComponentDescription != null)
 
 ## Open Questions
 
-- Имя признака (`IsReturnToEnclosingClass`, `IsSameClassCall`, `ReturnsToOwner`) — решается при
-  реализации и на спеки, подход и разбиение задач не влияет.
+- Имя признака — решено при реализации: `IsSameClassCall`. Отклонённые варианты
+  (`IsReturnToEnclosingClass`, `ReturnsToOwner`) описывают «возврат», тогда как признак отмечает вызов
+  метода своего класса; на спеки, подход и разбиение задач выбор имени не влиял.
