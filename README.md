@@ -81,7 +81,8 @@ dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj
 - .NET 8 **SDK**: анализ решения выполняется через Roslyn `MSBuildWorkspace`.
 - `npm` (опционально): только для OpenSpec-воркфлоу.
 
-Файлы интеграции (`.cline/skills/`, `.clinerules/workflows/`) в git не хранятся, поэтому локально нужно выполнить:
+Файлы интеграции с ИИ-агентами (`.cline/skills/`, `.clinerules/`, `.dsh/skills/`,
+`.opencode/commands/`, `.opencode/skills/`) в git не хранятся, поэтому локально нужно выполнить:
 
 ```bash
 npm i -g @fission-ai/openspec@1.13.0
