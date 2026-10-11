@@ -66,6 +66,10 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 ## Сборка и тесты
 - Сборка: `dotnet build C4ModelBuilder/C4ModelBuilder.sln`
 - Тесты: `dotnet test C4ModelBuilder/C4ModelBuilder.sln`
+- CI: `.github/workflows/ci.yml` — `restore` → `build --configuration Release --no-restore` →
+  `test --configuration Release --no-build` по тому же solution, на `ubuntu-latest` с SDK
+  `8.0.x`. Джоба `tests` в `publish-attributes-nuget.yml` и `publish-cli-docker.yml` выполняет
+  те же шаги, а публикующая джоба зависит от неё через `needs`.
 - NUnit. Юнит-тесты анализатора собирают in-memory `Solution` (`AdhocWorkspace`)
   и вызывают `SolutionAnalyzer.Create(NullLogger.Instance, Solution, maxDepth: …)`; без
   `MSBuildWorkspace`, путей и сети.
@@ -95,16 +99,23 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   change с артефактами (proposal, спеки-дельта, design, tasks), `/opsx-apply` — реализовать
   задачи, `/opsx-sync` — перенести дельта-спеки в основные без архивации,
   `/opsx-update` — поправить артефакты активного change (код не трогает),
-  `/opsx-archive` — заархивировать change после мерджа.
+  `/opsx-archive` — заархивировать change до мерджа, в той же ветке.
 - Source of truth по поведению — спеки: `openspec/specs/<capability>/spec.md`.
   Активные изменения — `openspec/changes/<change>/`, завершённые —
   `openspec/changes/archive/<дата>-<change>/`.
+- Архивация идёт до мерджа, в той же ветке: перенос в
+  `openspec/changes/archive/<дата>-<change>/` и синк дельта-спеков входят в тот же PR,
+  поэтому на `main` изменение попадает уже архивным; догонять архивацию отдельным коммитом
+  после мерджа не нужно.
+- Следствие: проверку, невозможную до мерджа или релиза, помечай прямо в задаче (образец —
+  задача 4.5 в `2026-10-11-ci-tests-in-github-pipelines`); правку артефактов
+  заархивированного change вноси в `openspec/changes/archive/<дата>-<change>/`.
 - Каркас change создаёт только CLI: `openspec new change "<имя>"`; папки в
   `openspec/changes/` вручную не создавать.
 - Проектный контекст и правила для воркфлоу — `openspec/config.yaml`
   (секции `context`, `rules`, `operations`); при смене конвенций обновлять и его.
-- Артефакты интеграции (`.cline/skills/`, `.clinerules/workflows/`) в git не хранятся;
-  команды установки — в README («Разработка»).
+- Артефакты интеграции (`.cline/skills/`, `.clinerules/`, `.dsh/skills/`, `.opencode/commands/`,
+  `.opencode/skills/`) в git не хранятся; команды установки — в README («Разработка»).
 - Состояние проверять командой `openspec list` (активные изменения) и `openspec doctor`.
 - Команды OpenSpec вызывать как `openspec …`; если политика ExecutionPolicy блокирует
   `.ps1` (например, `Restricted` или `AllSigned`), использовать `openspec.cmd …`.
@@ -120,6 +131,7 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 5. Собрать и прогнать тесты.
 6. Обновить README/AGENTS.md, если изменились CLI-опции, набор поддерживаемых
    C4-уровней, структура проектов или способ подключения OpenSpec.
+7. Заархивировать завершённый change (`/opsx-archive`) в той же ветке — до мерджа PR.
 
 ## Известные точки внимания
 - Магические строки (имена CQRS-интерфейсов, `HandleAsync`, исключения
@@ -137,7 +149,15 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   (`InvocationTreeMerger`) и случайным хешированием строк — между запусками порядок строк
   может отличаться. Контрактом порядок не считается, поэтому побайтовые проверки недопустимы.
 - Проекта `C4ModelBuilder.Cli.Tests` не существует: поведение CLI подтверждается инспекцией
-  кода, а не тестами. Ни одна джоба в `.github/workflows` не запускает `dotnet test` —
-  регрессия в тестах до main доходит незамеченной.
+  кода, а не тестами. Тесты запускает `ci.yml` (push в `main`, pull request, ручной запуск),
+  а в публикующих workflow их прогоняет джоба `tests`, от которой зависит публикующая джоба
+  (`needs`): релиз не выпускается при красных тестах.
+- Порядок джоб гейта (`tests` → `publish`/`build-and-push`) проверен по семантике `needs`
+  (падение или пропуск тестов пропускает публикующую джобу), но не живьём: живой прогон
+  возможен только на первом намеренном релизе, а холостой диспатч реально публикует пакет
+  в NuGet и тег `latest` в `ghcr.io`. См. задачу 4.5 в
+  `openspec/changes/archive/2026-10-11-ci-tests-in-github-pipelines/tasks.md`.
+- Шаги тестов продублированы в `.github/workflows/ci.yml` и в двух публикующих workflow:
+  при изменении способа запуска тестов править все три файла.
 - Публичный API библиотеки объявлен контрактом, но не покрыт спеками: изменение публичных
   сигнатур или структуры проектов решения требует change и дельты спеки.

@@ -115,22 +115,14 @@ jspm_packages
 # Optional REPL history
 .node_repl_history
 
-#Widget 2.0-3.0
-Rds.Kassa.Widget.Frontend/public
-Rds.Kassa.Widget.Frontend/wwwroot/public
-Rds.Kassa.Widget.Frontend/wwwroot30
-Rds.Kassa.Widget.Frontend/Views/Shared
-Rds.Kassa.Widget.Frontend/.vscode
-
-#Ignore widget 2.0 webpack build result
-
 #Nuget packages
 /packages
 
 /.cline/skills/
 /.clinerules
 /.specify
-/Afisha.Tickets.Partner/Properties/launchSettings.json
-/rambler-vault-debug.json
-/Certificates
 /output/
+
+.dsh/skills/
+.opencode/commands/
+.opencode/skills/
