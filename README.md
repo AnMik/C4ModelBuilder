@@ -68,7 +68,8 @@ dotnet run --project C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj
 - `scripts/Invoke-Sample.ps1` - запуск CLI на примере целевого проекта.
 - `openspec/` - спеки (`specs/`), изменения (`changes/`) и конфигурация (`config.yaml`).
 - `AGENTS.md` - контекст и правила для ИИ-агентов.
-- `.github/workflows/` - публикация `C4ModelBuilder.Attributes` в NuGet и CLI-образа в `ghcr.io`.
+- `.github/workflows/` - `ci.yml` собирает и тестирует решение на push/PR; публикация
+  `C4ModelBuilder.Attributes` в NuGet и CLI-образа в `ghcr.io` — только после прогона тестов.
 - `Dockerfile` - образ CLI: внутри доступна команда `c4builder`, базовый образ на .NET 8 SDK.
 
 ### Разработка

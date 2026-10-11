@@ -1,0 +1,32 @@
+﻿name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore C4ModelBuilder/C4ModelBuilder.sln
+
+      - name: Build
+        run: dotnet build C4ModelBuilder/C4ModelBuilder.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test C4ModelBuilder/C4ModelBuilder.sln --configuration Release --no-build

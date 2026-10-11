@@ -66,6 +66,10 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
 ## Сборка и тесты
 - Сборка: `dotnet build C4ModelBuilder/C4ModelBuilder.sln`
 - Тесты: `dotnet test C4ModelBuilder/C4ModelBuilder.sln`
+- CI: `.github/workflows/ci.yml` — `restore` → `build --configuration Release --no-restore` →
+  `test --configuration Release --no-build` по тому же solution, на `ubuntu-latest` с SDK
+  `8.0.x`. Джоба `tests` в `publish-attributes-nuget.yml` и `publish-cli-docker.yml` выполняет
+  те же шаги, а публикующая джоба зависит от неё через `needs`.
 - NUnit. Юнит-тесты анализатора собирают in-memory `Solution` (`AdhocWorkspace`)
   и вызывают `SolutionAnalyzer.Create(NullLogger.Instance, Solution, maxDepth: …)`; без
   `MSBuildWorkspace`, путей и сети.
@@ -137,7 +141,10 @@ C4Component (L3), C4Code (L4). Реализован только уровень 
   (`InvocationTreeMerger`) и случайным хешированием строк — между запусками порядок строк
   может отличаться. Контрактом порядок не считается, поэтому побайтовые проверки недопустимы.
 - Проекта `C4ModelBuilder.Cli.Tests` не существует: поведение CLI подтверждается инспекцией
-  кода, а не тестами. Ни одна джоба в `.github/workflows` не запускает `dotnet test` —
-  регрессия в тестах до main доходит незамеченной.
+  кода, а не тестами. Тесты запускает `ci.yml` (push в `main`, pull request, ручной запуск),
+  а в публикующих workflow их прогоняет джоба `tests`, от которой зависит публикующая джоба
+  (`needs`): релиз не выпускается при красных тестах.
+- Шаги тестов продублированы в `.github/workflows/ci.yml` и в двух публикующих workflow:
+  при изменении способа запуска тестов править все три файла.
 - Публичный API библиотеки объявлен контрактом, но не покрыт спеками: изменение публичных
   сигнатур или структуры проектов решения требует change и дельты спеки.
