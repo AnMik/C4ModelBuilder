@@ -38,6 +38,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Read CLI version
+        run: |
+          VERSION=$(dotnet msbuild C4ModelBuilder/C4ModelBuilder.Cli/C4ModelBuilder.Cli.csproj -getProperty:Version)
+          echo "CLI_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Set lower case image name
         run: |
           echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}-cli" >> $GITHUB_ENV
@@ -57,6 +67,12 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.CLI_VERSION }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            VERSION=${{ env.CLI_VERSION }}
+            REVISION=${{ github.sha }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
