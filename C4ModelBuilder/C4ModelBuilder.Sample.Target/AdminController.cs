@@ -14,7 +14,7 @@ namespace C4ModelBuilder.Sample.Target
             _smsGateway = smsGateway;
         }
 
-        [C4Component("Send promo campaign via SMS")]
+        [C4Component("Send promo campaign via SMS", isRoot: true)]
         public async Task SendPromoAsync(CancellationToken ct)
         {
             var users = await _userApplication.GetUsersAsync(ct);

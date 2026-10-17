@@ -13,7 +13,11 @@ internal sealed class MethodAnalyzer(
     IReadOnlyDictionary<string, ClassMethod> rdsCqrsRequests,
     int maxDepth)
 {
-    public async Task<InvocationTree?> AnalyzeMethod(ClassMethod classMethod, int currentDepth, CancellationToken ct = default)
+    public async Task<InvocationTree?> AnalyzeMethod(
+        ClassMethod classMethod,
+        int currentDepth,
+        INamedTypeSymbol? excludedClassSymbol = null,
+        CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -36,29 +40,40 @@ internal sealed class MethodAnalyzer(
 
         foreach (var invokedMethod in GetInvokedMethods(classMethod, methodSemanticModel))
         {
-            var isSameClassCall = invokedMethod.ClassMethod != null
-                                  && SymbolEqualityComparer.Default.Equals(
-                                      parsedSolution.GetDeclaredSymbols(invokedMethod.ClassMethod).ClassSymbol,
-                                      currentClassSymbol);
+            var invokedClassSymbol = invokedMethod.ClassMethod != null
+                ? parsedSolution.GetDeclaredSymbols(invokedMethod.ClassMethod).ClassSymbol
+                : null;
+
+            var invokedMethodNode = invokedMethod.ClassMethod != null
+                ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, excludedClassSymbol, ct)
+                : new InvocationTree(
+                    nodeName: $"{invokedMethod.ClassName}.{invokedMethod.MethodName}",
+                    c4ComponentDescription: invokedMethod.MethodDescription);
+
+            if (invokedMethodNode == null)
+            {
+                continue;
+            }
+
+            // Класс, объявивший корневой метод, не становится узлом диаграммы этого метода:
+            // вызов идёт напрямую от вызывающего компонента к вызванному методу.
+            if (excludedClassSymbol != null
+                && SymbolEqualityComparer.Default.Equals(invokedClassSymbol, excludedClassSymbol))
+            {
+                currentMethodNode.AddInvocation(invokedMethodNode);
+                continue;
+            }
 
             var invokedClassNode = new InvocationTree(
                 nodeName: invokedMethod.ClassName,
                 c4ComponentDescription: invokedMethod.ClassDescription)
             {
-                IsSameClassCall = isSameClassCall,
+                IsSameClassCall = invokedClassSymbol != null
+                                  && SymbolEqualityComparer.Default.Equals(invokedClassSymbol, currentClassSymbol),
             };
 
-            var invokedMethodNode = invokedMethod.ClassMethod != null
-                ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, ct)
-                : new InvocationTree(
-                    nodeName: $"{invokedMethod.ClassName}.{invokedMethod.MethodName}",
-                    c4ComponentDescription: invokedMethod.MethodDescription);
-
-            if (invokedMethodNode != null)
-            {
-                invokedClassNode.AddInvocation(invokedMethodNode);
-                currentMethodNode.AddInvocation(invokedClassNode);
-            }
+            invokedClassNode.AddInvocation(invokedMethodNode);
+            currentMethodNode.AddInvocation(invokedClassNode);
         }
 
         return currentMethodNode;
