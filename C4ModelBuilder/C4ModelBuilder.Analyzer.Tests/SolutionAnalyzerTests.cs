@@ -23,7 +23,11 @@ public class SolutionAnalyzerTests
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
         Assert.That(trees.Select(tree => tree.NodeName),
-            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController", "StatsController" }));
+            Is.EquivalentTo(new[]
+            {
+                "HomeController", "AdminController", "CacheController", "StatsController",
+                "ReportController", "ReportController.BuildAsync", "AuditController.RecordAsync",
+            }));
 
         var home = trees.Single(tree => tree.NodeName == "HomeController");
         Assert.That(NodeNames(home), Does.Contain("GetUsersHandler"));
@@ -84,6 +88,104 @@ public class SolutionAnalyzerTests
     }
 
     [Test]
+    public async Task AnalyzeComponents_builds_a_separate_tree_for_a_root_method()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15);
+
+        var tree = await analyzer.AnalyzeComponents(Ct)
+                                 .Where(x => x.NodeName == "ReportController.BuildAsync")
+                                 .FirstAsync(Ct);
+
+        Assert.That(tree.C4ComponentDescription, Is.EqualTo("Build the report"));
+        Assert.That(NodeNames(tree), Is.SupersetOf(new[] { "UserApplication", "UserApplication.GetUsersAsync" }));
+        Assert.That(NodeNames(tree), Does.Not.Contain("ReportController"));
+    }
+
+    [Test]
+    public async Task Analysis_root_method_does_not_depend_on_visibility_and_requires_isRoot()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15);
+
+        var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
+        var privateRoot = trees.Single(tree => tree.NodeName == "AuditController.RecordAsync");
+
+        Assert.That(privateRoot.C4ComponentDescription, Is.EqualTo("Record audit event"));
+        Assert.That(NodeNames(privateRoot), Is.SupersetOf(new[] { "ISmsGateway", "ISmsGateway.SendAsync" }));
+        Assert.That(trees.Select(tree => tree.NodeName), Does.Not.Contain("AuditController"));
+        Assert.That(trees.Select(tree => tree.NodeName), Does.Not.Contain("AuditController.DescribeAsync"));
+    }
+
+    [Test]
+    public async Task Analysis_root_method_does_not_put_its_own_class_on_the_diagram()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
+            CreateSolution(workspace, ("Sample.cs", RootMethodWithSameClassCallScenario)),
+            maxDepth: 15);
+
+        var tree = await analyzer.AnalyzeComponents(Ct)
+                                 .Where(x => x.NodeName == "BasketController.RecalculateAsync")
+                                 .FirstAsync(Ct);
+
+        Assert.That(NodeNames(tree), Does.Not.Contain("BasketController"));
+        Assert.That(ChildNames(tree), Is.EquivalentTo(new[] { "BasketController.ValidateAsync" }));
+    }
+
+    [Test]
+    public async Task AnalyzeComponents_keeps_class_and_method_roots_independent()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(NullLogger.Instance, CreateSampleSolution(workspace), maxDepth: 15);
+
+        var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
+
+        var classTree = trees.Single(tree => tree.NodeName == "ReportController");
+        var methodTree = trees.Single(tree => tree.NodeName == "ReportController.BuildAsync");
+
+        Assert.That(classTree.C4ComponentDescription, Is.EqualTo("Reports page"));
+        Assert.That(NodeNames(classTree),
+            Is.SupersetOf(new[] { "ReportController", "ReportController.BuildAsync", "ReportController.PreviewAsync" }));
+
+        Assert.That(methodTree.C4ComponentDescription, Is.EqualTo("Build the report"));
+        Assert.That(NodeNames(methodTree),
+            Is.SupersetOf(new[] { "ReportController.BuildAsync", "UserApplication", "UserApplication.GetUsersAsync" }));
+        Assert.That(NodeNames(methodTree), Does.Not.Contain("ReportController"));
+        Assert.That(NodeNames(methodTree), Does.Not.Contain("ReportController.PreviewAsync"));
+        Assert.That(NodeNames(classTree), Does.Not.Contain("AuditController"));
+    }
+
+    [Test]
+    public async Task Analysis_depth_limit_is_counted_from_the_root_method()
+    {
+        using var workspace = new AdhocWorkspace();
+        var solution = CreateSampleSolution(workspace);
+
+        var shallowAnalyzer = await SolutionAnalyzer.Create(NullLogger.Instance, solution, maxDepth: 0);
+        var shallow = await shallowAnalyzer.AnalyzeComponents(Ct)
+                                           .Where(x => x.NodeName == "ReportController.BuildAsync")
+                                           .FirstAsync(Ct);
+
+        Assert.That(NodeNames(shallow), Is.EquivalentTo(new[] { "ReportController.BuildAsync" }));
+
+        var deepAnalyzer = await SolutionAnalyzer.Create(NullLogger.Instance, solution, maxDepth: 1);
+        var deep = await deepAnalyzer.AnalyzeComponents(Ct)
+                                     .Where(x => x.NodeName == "ReportController.BuildAsync")
+                                     .FirstAsync(Ct);
+
+        Assert.That(NodeNames(deep), Is.EquivalentTo(new[]
+        {
+            "ReportController.BuildAsync", "UserApplication", "UserApplication.GetUsersAsync",
+        }));
+    }
+
+    [Test]
     public async Task AnalyzeComponents_respects_depth_limit()
     {
         using var workspace = new AdhocWorkspace();
@@ -109,7 +211,11 @@ public class SolutionAnalyzerTests
         var trees = await analyzer.AnalyzeComponents(Ct).ToListAsync(Ct);
 
         Assert.That(trees.Select(tree => tree.NodeName),
-            Is.EquivalentTo(new[] { "HomeController", "AdminController", "CacheController", "StatsController" }));
+            Is.EquivalentTo(new[]
+            {
+                "HomeController", "AdminController", "CacheController", "StatsController",
+                "ReportController", "ReportController.BuildAsync", "AuditController.RecordAsync",
+            }));
         Assert.That(trees.All(tree => tree.Invocations.Count > 0), Is.True);
     }
 
@@ -555,6 +661,39 @@ public class SolutionAnalyzerTests
                 }
             }
 
+            [C4Component("Reports page", isRoot: true)]
+            public sealed class ReportController
+            {
+                private readonly IUserApplication _userApplication;
+
+                public ReportController(IUserApplication userApplication) => _userApplication = userApplication;
+
+                [C4Component("Build the report", isRoot: true)]
+                public async Task BuildAsync(CancellationToken ct)
+                {
+                    var users = await _userApplication.GetUsersAsync(ct);
+
+                    GC.KeepAlive(users);
+                }
+
+                [C4Component("Preview the report")]
+                public Task PreviewAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+
+            [C4Component("Audit trail")]
+            public sealed class AuditController
+            {
+                private readonly ISmsGateway _smsGateway;
+
+                public AuditController(ISmsGateway smsGateway) => _smsGateway = smsGateway;
+
+                [C4Component("Record audit event", isRoot: true)]
+                private async Task RecordAsync(CancellationToken ct) => await _smsGateway.SendAsync("audit", ct);
+
+                [C4Component("Describe the audit page")]
+                public Task DescribeAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+
             [C4Component("Cache that uses a framework collection", isRoot: true)]
             public sealed class CacheController
             {
@@ -812,6 +951,26 @@ public class SolutionAnalyzerTests
             public sealed class BasketController
             {
                 [C4Component("Recalculate the basket")]
+                public async Task RecalculateAsync(CancellationToken ct) => await ValidateAsync(ct);
+
+                [C4Component("Validate the basket")]
+                private Task ValidateAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+        }
+        """;
+
+    private const string RootMethodWithSameClassCallScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Attributes;
+
+        namespace Sample
+        {
+            [C4Component("Controller whose method is a root")]
+            public sealed class BasketController
+            {
+                [C4Component("Recalculate the basket", isRoot: true)]
                 public async Task RecalculateAsync(CancellationToken ct) => await ValidateAsync(ct);
 
                 [C4Component("Validate the basket")]
