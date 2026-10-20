@@ -14,7 +14,7 @@ namespace C4ModelBuilder.Attributes
     /// {
     /// }
     ///
-    /// [C4Component("Главная страница", isRoot: true)]
+    /// [C4Component("Главная страница", isRoot: true, technology: "ASP.NET Core")]
     /// public sealed class HomeController
     /// {
     /// }
@@ -23,10 +23,11 @@ namespace C4ModelBuilder.Attributes
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Method)]
     public sealed class C4ComponentAttribute : Attribute
     {
-        public C4ComponentAttribute(string description, bool isRoot = false)
+        public C4ComponentAttribute(string description, bool isRoot = false, string? technology = null)
         {
             Description = description;
             IsRoot = isRoot;
+            Technology = technology;
         }
 
         /// <summary>
@@ -38,5 +39,11 @@ namespace C4ModelBuilder.Attributes
         /// Признак корневого компонента — точки входа анализа. По умолчанию <c>false</c>.
         /// </summary>
         public bool IsRoot { get; }
+
+        /// <summary>
+        /// Технология реализации компонента (например, <c>ASP.NET Core</c>), отображаемая на диаграмме
+        /// отдельной строкой. Необязательный параметр конструктора. По умолчанию не задана.
+        /// </summary>
+        public string? Technology { get; }
     }
 }

@@ -2,14 +2,14 @@
 
 ## 1. Атрибут разметки
 
-- [ ] 1.1 Добавить в `C4ComponentAttribute` третий необязательный параметр конструктора
+- [x] 1.1 Добавить в `C4ComponentAttribute` третий необязательный параметр конструктора
   `string? technology = null` и свойство `Technology { get; }`; сохранить блочные namespace и
   C# 8-стиль. Проверка: `dotnet build C4ModelBuilder/C4ModelBuilder.sln` зелёный, `[C4Component("x")]`,
   `[C4Component("x", isRoot: true)]` и `[C4Component("x", isRoot: true, technology: "T")]` компилируются
   в `C4ModelBuilder.Sample.Target`
-- [ ] 1.2 Обновить XML-пример в `C4ComponentAttribute.cs` и примеры в `C4ModelBuilder.Attributes/README.md`
+- [x] 1.2 Обновить XML-пример в `C4ComponentAttribute.cs` и примеры в `C4ModelBuilder.Attributes/README.md`
   так, чтобы они показывали технологию. Проверка: примеры в README компилируются как есть
-- [ ] 1.3 Поднять `<Version>` до `3.1.0` в `C4ModelBuilder.Attributes.csproj`. Проверка:
+- [x] 1.3 Поднять `<Version>` до `3.1.0` в `C4ModelBuilder.Attributes.csproj`. Проверка:
   `dotnet pack` даёт пакет версии 3.1.0
 
 ## 2. Модель дерева вызовов

@@ -13,18 +13,21 @@
 Пример разметки:
 
 ```csharp
-[C4Component("Отправка промо-кампании")]
+[C4Component("Отправка промо-кампании", technology: "RabbitMQ")]
 public sealed class CampaignSender
 {
 }
 
-[C4Component("Главная страница", isRoot: true)]
+[C4Component("Главная страница", isRoot: true, technology: "ASP.NET Core")]
 public sealed class HomeController
 {
 }
 ```
 
 Описание обязательно: разметка без параметра описания не компилируется.
+Технология необязательна: если она не задана, диаграмма выводится без строки технологии.
 Миграция с версии 2.x: `[C4Component(Description = "…")]` → `[C4Component("…")]`,
 `[C4Component(IsRoot = true, Description = "…")]` → `[C4Component("…", isRoot: true)]`.
+Миграция с версии 3.x: версия 3.1.0 добавляет необязательный параметр `technology`; существующая разметка
+компилируется без правок.
 
