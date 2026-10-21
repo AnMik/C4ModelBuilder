@@ -402,6 +402,57 @@ public class SolutionAnalyzerTests
             Is.EqualTo("OrderController.CompleteAsync"));
     }
 
+    [Test]
+    public async Task Analysis_reads_technology_from_class_and_method_markup()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
+            CreateSolution(workspace, ("Sample.cs", TechnologyScenario)),
+            maxDepth: 15);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "TechController").FirstAsync(Ct);
+
+        Assert.That(tree.C4ComponentTechnology, Is.EqualTo("ASP.NET Core"));
+        Assert.That(FindNode(tree, "TechController.LoadAsync").C4ComponentTechnology, Is.EqualTo("Polly"));
+        Assert.That(FindNode(tree, "TechRepository").C4ComponentTechnology, Is.EqualTo("EF Core Repository"));
+    }
+
+    [Test]
+    public async Task Analysis_does_not_inherit_technology_from_class_to_method()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
+            CreateSolution(workspace, ("Sample.cs", TechnologyScenario)),
+            maxDepth: 15);
+
+        var tree = await analyzer.AnalyzeComponents(Ct).Where(x => x.NodeName == "TechController").FirstAsync(Ct);
+
+        Assert.That(FindNode(tree, "TechRepository.LoadAsync").C4ComponentTechnology, Is.Null);
+        Assert.That(FindNode(tree, "TechRepository").C4ComponentTechnology, Is.EqualTo("EF Core Repository"));
+    }
+
+    [Test]
+    public async Task Analysis_root_method_does_not_inherit_technology_from_its_class()
+    {
+        using var workspace = new AdhocWorkspace();
+
+        var analyzer = await SolutionAnalyzer.Create(
+            NullLogger.Instance,
+            CreateSolution(workspace, ("Sample.cs", TechnologyScenario)),
+            maxDepth: 15);
+
+        var tree = await analyzer.AnalyzeComponents(Ct)
+                                 .Where(x => x.NodeName == "PlainRootMethodController.RunAsync")
+                                 .FirstAsync(Ct);
+
+        Assert.That(tree.C4ComponentTechnology, Is.Null);
+        Assert.That(tree.C4ComponentDescription, Is.EqualTo("Root method without technology"));
+    }
+
     private static Solution CreateSampleSolution(AdhocWorkspace workspace)
         => CreateSolution(
             workspace,
@@ -715,6 +766,40 @@ public class SolutionAnalyzerTests
                 public StatsController(Rds.Cqrs.Queries.IQueryService queryService) => _queryService = queryService;
 
                 public async Task GetStatsAsync(CancellationToken ct) => await _queryService.Ask(new GetStats(), ct);
+            }
+        }
+        """;
+
+    private const string TechnologyScenario =
+        """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using C4ModelBuilder.Attributes;
+
+        namespace Sample
+        {
+            [C4Component("Tech controller", isRoot: true, technology: "ASP.NET Core")]
+            public sealed class TechController
+            {
+                private readonly TechRepository _repository;
+
+                public TechController(TechRepository repository) => _repository = repository;
+
+                [C4Component("Load through the repository", technology: "Polly")]
+                public Task LoadAsync(CancellationToken ct) => _repository.LoadAsync(ct);
+            }
+
+            [C4Component("Repository over EF Core", technology: "EF Core Repository")]
+            public sealed class TechRepository
+            {
+                public Task LoadAsync(CancellationToken ct) => Task.CompletedTask;
+            }
+
+            [C4Component("Class owning a root method", technology: "Ignored For Method")]
+            public sealed class PlainRootMethodController
+            {
+                [C4Component("Root method without technology", isRoot: true)]
+                public Task RunAsync(CancellationToken ct) => Task.CompletedTask;
             }
         }
         """;

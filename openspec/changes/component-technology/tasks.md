@@ -21,12 +21,12 @@
 
 ## 3. Чтение технологии в анализаторе
 
-- [ ] 3.1 Добавить `GetC4ComponentTechnology()` в `AttributeDataExtensions` — чтение
+- [x] 3.1 Добавить `GetC4ComponentTechnology()` в `AttributeDataExtensions` — чтение
   `ConstructorArguments[2]`; `IsRootC4Component` и `GetC4ComponentDescription` не менять. Проверка:
   тест на `SolutionAnalyzerTests`, где технология класса и метода читается из разметки
-- [ ] 3.2 Добавить `ClassTechnology`/`MethodTechnology` в `InvokedMethod` по образцу пары описаний.
+- [x] 3.2 Добавить `ClassTechnology`/`MethodTechnology` в `InvokedMethod` по образцу пары описаний.
   Проверка: `SolutionAnalyzerTests` — технология попадает в узел через вызов поля
-- [ ] 3.3 Передавать технологию в `MethodAnalyzer` (узел метода — своя, узел класса — своя) и в
+- [x] 3.3 Передавать технологию в `MethodAnalyzer` (узел метода — своя, узел класса — своя) и в
   `SolutionAnalyzer` (корневой узел класса и корневой узел метода). Проверка: тесты анализатора на
   корень-класс, корень-метод и на отсутствие наследования от класса к методу
 

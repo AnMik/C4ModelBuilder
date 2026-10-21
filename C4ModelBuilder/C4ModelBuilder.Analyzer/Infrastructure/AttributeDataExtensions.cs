@@ -11,4 +11,9 @@ internal static class AttributeDataExtensions
         => attributeData is { ConstructorArguments: [{ Value: var value }, ..] }
             ? value?.ToString()
             : null;
+
+    public static string? GetC4ComponentTechnology(this AttributeData? attributeData)
+        => attributeData is { ConstructorArguments: [_, _, { Value: var value }, ..] }
+            ? value?.ToString()
+            : null;
 }
