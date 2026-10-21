@@ -31,12 +31,12 @@ internal sealed class MethodAnalyzer(
         var methodSemanticModel = parsedSolution.GetSemanticModel(classMethod.MethodSyntax.SyntaxTree);
         var currentClassSymbol = parsedSolution.GetDeclaredSymbols(classMethod).ClassSymbol;
 
+        var currentMethodSymbol = methodSemanticModel.GetDeclaredSymbol(classMethod.MethodSyntax);
+
         var currentMethodNode = new InvocationTree(
             nodeName: classMethod.Name,
-            c4ComponentDescription: methodSemanticModel
-                                    .GetDeclaredSymbol(classMethod.MethodSyntax)
-                                    ?.GetC4ComponentAttribute()
-                                    .GetC4ComponentDescription());
+            c4ComponentDescription: currentMethodSymbol?.GetC4ComponentAttribute().GetC4ComponentDescription(),
+            c4ComponentTechnology: currentMethodSymbol?.GetC4ComponentAttribute().GetC4ComponentTechnology());
 
         foreach (var invokedMethod in GetInvokedMethods(classMethod, methodSemanticModel))
         {
@@ -48,7 +48,8 @@ internal sealed class MethodAnalyzer(
                 ? await AnalyzeMethod(invokedMethod.ClassMethod, currentDepth + 1, excludedClassSymbol, ct)
                 : new InvocationTree(
                     nodeName: $"{invokedMethod.ClassName}.{invokedMethod.MethodName}",
-                    c4ComponentDescription: invokedMethod.MethodDescription);
+                    c4ComponentDescription: invokedMethod.MethodDescription,
+                    c4ComponentTechnology: invokedMethod.MethodTechnology);
 
             if (invokedMethodNode == null)
             {
@@ -66,7 +67,8 @@ internal sealed class MethodAnalyzer(
 
             var invokedClassNode = new InvocationTree(
                 nodeName: invokedMethod.ClassName,
-                c4ComponentDescription: invokedMethod.ClassDescription)
+                c4ComponentDescription: invokedMethod.ClassDescription,
+                c4ComponentTechnology: invokedMethod.ClassTechnology)
             {
                 IsSameClassCall = invokedClassSymbol != null
                                   && SymbolEqualityComparer.Default.Equals(invokedClassSymbol, currentClassSymbol),

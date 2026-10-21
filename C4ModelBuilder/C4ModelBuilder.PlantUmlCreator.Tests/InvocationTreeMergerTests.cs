@@ -262,14 +262,23 @@ public class InvocationTreeMergerTests
     }
 
     [Test]
-    public void Merge_assigns_repository_and_gateway_component_types()
+    public void Merge_assigns_component_types_by_technology_not_by_name()
     {
-        var root = new InvocationTree("OrderRepository", c4ComponentDescription: "Orders");
-        var gateway = new InvocationTree("PaymentGateway", c4ComponentDescription: "Payments");
-        var normal = new InvocationTree("OrderService", c4ComponentDescription: "Service");
+        var root = new InvocationTree(
+            "OrderRepository",
+            c4ComponentDescription: "Orders",
+            c4ComponentTechnology: "EF Core Repository");
+        var gateway = new InvocationTree(
+            "PaymentGateway",
+            c4ComponentDescription: "Payments",
+            c4ComponentTechnology: "Kafka Gateway");
+        var noTechnology = new InvocationTree(
+            "OrderService",
+            c4ComponentDescription: "Service",
+            c4ComponentTechnology: null);
 
         root.AddInvocation(gateway);
-        root.AddInvocation(normal);
+        root.AddInvocation(noTechnology);
 
         var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
 
@@ -280,5 +289,39 @@ public class InvocationTreeMergerTests
         Assert.That(repoComp.Type, Is.EqualTo(C4ComponentDiagram.Type.Repository));
         Assert.That(gatewayComp.Type, Is.EqualTo(C4ComponentDiagram.Type.Gateway));
         Assert.That(normalComp.Type, Is.EqualTo(C4ComponentDiagram.Type.Normal));
+    }
+
+    [Test]
+    public void Merge_component_without_technology_gets_no_type_even_when_name_says_repository()
+    {
+        var root = new InvocationTree("OrderRepository", c4ComponentDescription: "Orders");
+
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
+
+        var component = diagram.Components.Single();
+
+        Assert.That(component.Type, Is.EqualTo(C4ComponentDiagram.Type.Normal));
+        Assert.That(component.Technology, Is.Null);
+    }
+
+    [Test]
+    public void Merge_carries_technology_into_the_diagram_model()
+    {
+        var root = new InvocationTree(
+            "HomeController",
+            c4ComponentDescription: "Main controller",
+            c4ComponentTechnology: "ASP.NET Core");
+        var service = new InvocationTree("UserService", c4ComponentDescription: "User business logic");
+        root.AddInvocation(service);
+
+        var diagram = InvocationTreeMerger.MergeToComponentDiagram(root);
+
+        Assert.That(
+            diagram.Components.Single(c => c.ComponentAlias == "HomeController").Technology,
+            Is.EqualTo("ASP.NET Core"));
+        Assert.That(diagram.Components.Single(c => c.ComponentAlias == "UserService").Technology, Is.Null);
+
+        AssertRelations(diagram, ("HomeController", "UserService"));
+        CollectionAssert.AreEquivalent(new[] { "HomeController", "UserService" }, diagram.Components.Select(c => c.ComponentAlias));
     }
 }

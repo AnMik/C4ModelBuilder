@@ -4,7 +4,10 @@
 /// Дерево вызовов для одного корневого компонента (результат анализа одного root-класса).
 /// Служит промежуточным представлением между анализом кода и построением диаграммы.
 /// </summary>
-public sealed class InvocationTree(string nodeName, string? c4ComponentDescription)
+public sealed class InvocationTree(
+    string nodeName,
+    string? c4ComponentDescription,
+    string? c4ComponentTechnology = null)
 {
     /// <summary>
     /// Сигнатура узла (например, "AccountController" или "AdminController.SendPromoAsync").
@@ -15,6 +18,12 @@ public sealed class InvocationTree(string nodeName, string? c4ComponentDescripti
     /// Данные атрибута <c>C4Component</c>, если он проставлен на узле.
     /// </summary>
     public string? C4ComponentDescription { get; } = c4ComponentDescription;
+
+    /// <summary>
+    /// Технология из атрибута <c>C4Component</c>, если она задана на узле. <c>null</c> — технология
+    /// не указана; от класса к методу не наследуется.
+    /// </summary>
+    public string? C4ComponentTechnology { get; } = c4ComponentTechnology;
 
     /// <summary>
     /// Признак того, что узел создан для вызова метода своего класса: такой узел не становится

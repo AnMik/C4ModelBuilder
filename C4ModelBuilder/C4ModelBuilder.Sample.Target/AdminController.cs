@@ -23,7 +23,7 @@ namespace C4ModelBuilder.Sample.Target
             GC.KeepAlive(users);
         }
 
-        [C4Component("Send one SMS message")]
+        [C4Component("Send one SMS message", technology: "Twilio SDK")]
         private async Task SendOneAsync(string message, CancellationToken ct)
         {
             await _smsGateway.SendAsync(message, ct);

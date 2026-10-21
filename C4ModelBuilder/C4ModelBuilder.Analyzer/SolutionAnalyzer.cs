@@ -99,7 +99,8 @@ public sealed class SolutionAnalyzer
     {
         var rootNode = new InvocationTree(
             nodeName: classSyntax.Identifier.Text,
-            c4ComponentDescription: componentAttribute.GetC4ComponentDescription());
+            c4ComponentDescription: componentAttribute.GetC4ComponentDescription(),
+            c4ComponentTechnology: componentAttribute.GetC4ComponentTechnology());
 
         var publicMethods = classSyntax
                             .Members

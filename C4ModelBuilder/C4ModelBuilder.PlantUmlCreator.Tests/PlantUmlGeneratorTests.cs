@@ -20,8 +20,8 @@ public class PlantUmlGeneratorTests
 
         Assert.That(result, Does.Contain("@startuml"));
         Assert.That(result, Does.Contain("@enduml"));
-        Assert.That(result, Does.Contain("Component(HomeController, \"HomeController\", \"Main controller\")"));
         Assert.That(result, Does.Not.Contain("Rel("));
+        Assert.That(result, Does.Contain("Component(HomeController, \"HomeController\", \"\", \"Main controller\")"));
     }
 
     [Test]
@@ -35,8 +35,8 @@ public class PlantUmlGeneratorTests
 
         var result = PlantUmlGenerator.Generate(tree);
 
-        Assert.That(result, Does.Contain("Component(HomeController, \"HomeController\", \"Main controller\")"));
-        Assert.That(result, Does.Contain("Component(UserService, \"UserService\", \"User business logic\")"));
+        Assert.That(result, Does.Contain("Component(HomeController, \"HomeController\", \"\", \"Main controller\")"));
+        Assert.That(result, Does.Contain("Component(UserService, \"UserService\", \"\", \"User business logic\")"));
         Assert.That(result, Does.Contain("Rel(HomeController, UserService, \"\")"));
         Assert.That(result, Does.Not.Contain("HomeController.GetUsersAsync"));
     }
@@ -83,5 +83,29 @@ public class PlantUmlGeneratorTests
         Assert.That(result, Does.Contain("Rel(ClassX.MethodA, ClassX.MethodB, \"\")"));
         Assert.That(result, Does.Contain("Rel(ClassX, ClassX.MethodB, \"\")"));
         Assert.That(result, Does.Not.Contain("Rel(ClassX.MethodA, ClassX, \"\")"));
+    }
+
+    [Test]
+    public void Generator_puts_technology_third_and_description_fourth()
+    {
+        var tree = new InvocationTree(
+            "HomeController",
+            c4ComponentDescription: "Main controller",
+            c4ComponentTechnology: "ASP.NET Core");
+        var repository = new InvocationTree(
+            "UserRepository",
+            c4ComponentDescription: "User data repository",
+            c4ComponentTechnology: "EF Core Repository");
+        tree.AddInvocation(repository);
+
+        var result = PlantUmlGenerator.Generate(tree);
+
+        Assert.That(
+            result,
+            Does.Contain("Component(HomeController, \"HomeController\", \"ASP.NET Core\", \"Main controller\")"));
+        Assert.That(
+            result,
+            Does.Contain(
+                "Component(UserRepository, \"UserRepository\", \"EF Core Repository\", \"User data repository\", $tags=\"repository\")"));
     }
 }

@@ -30,7 +30,9 @@ internal static class PlantUmlRenderer
                 _ => string.Empty
             };
 
-            sb.AppendLine($"Component({component.ComponentAlias}, \"{component.ComponentName}\", \"{component.Description}\"{tagArg})");
+            sb.AppendLine(
+                $"Component({component.ComponentAlias}, \"{component.ComponentName}\", \"{component.Technology ?? string.Empty}\", " +
+                $"\"{component.Description}\"{tagArg})");
         }
 
         if (diagram.Components.Count > 0 && diagram.Relations.Count > 0)

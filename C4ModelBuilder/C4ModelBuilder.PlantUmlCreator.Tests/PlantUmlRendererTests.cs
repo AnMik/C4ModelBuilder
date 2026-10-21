@@ -94,7 +94,9 @@ public class PlantUmlRendererTests
 
         var result = PlantUmlRenderer.Render(diagram);
 
-        Assert.That(result, Does.Contain("Component(ProductService, \"Product Service\", \"Service for managing products\")"));
+        Assert.That(
+            result,
+            Does.Contain("Component(ProductService, \"Product Service\", \"\", \"Service for managing products\")"));
     }
 
     [Test]
@@ -112,6 +114,67 @@ public class PlantUmlRendererTests
         var result = PlantUmlRenderer.Render(diagram);
 
         Assert.That(result, Does.Contain("Rel(A, B, \"\")"));
+    }
+
+    [Test]
+    public void Render_renders_component_macro_with_technology_and_description()
+    {
+        var diagram = new C4ComponentDiagram(
+            Components:
+            [
+                new C4ComponentDiagram.C4Component(
+                    "ProductService",
+                    "Product Service",
+                    "Service for managing products",
+                    C4ComponentDiagram.Type.Normal,
+                    "ASP.NET Core")
+            ],
+            Relations: Array.Empty<C4ComponentDiagram.C4Relation>());
+
+        var result = PlantUmlRenderer.Render(diagram);
+
+        Assert.That(
+            result,
+            Does.Contain("Component(ProductService, \"Product Service\", \"ASP.NET Core\", \"Service for managing products\")"));
+    }
+
+    [Test]
+    public void Render_keeps_description_in_the_fourth_slot_when_technology_is_missing()
+    {
+        var diagram = new C4ComponentDiagram(
+            Components:
+            [
+                new C4ComponentDiagram.C4Component("ProductService", "Product Service", "Service for managing products")
+            ],
+            Relations: Array.Empty<C4ComponentDiagram.C4Relation>());
+
+        var result = PlantUmlRenderer.Render(diagram);
+
+        Assert.That(
+            result,
+            Does.Contain("Component(ProductService, \"Product Service\", \"\", \"Service for managing products\")"));
+    }
+
+    [Test]
+    public void Render_renders_technology_together_with_type_tag()
+    {
+        var diagram = new C4ComponentDiagram(
+            Components:
+            [
+                new C4ComponentDiagram.C4Component(
+                    "UserRepository",
+                    "UserRepository",
+                    "User DB",
+                    C4ComponentDiagram.Type.Repository,
+                    "EF Core Repository")
+            ],
+            Relations: Array.Empty<C4ComponentDiagram.C4Relation>());
+
+        var result = PlantUmlRenderer.Render(diagram);
+
+        Assert.That(
+            result,
+            Does.Contain("Component(UserRepository, \"UserRepository\", \"EF Core Repository\", \"User DB\", $tags=\"repository\")"));
     }
 
     private static int CountStringOccurrences(string text, string pattern)
@@ -138,7 +201,7 @@ public class PlantUmlRendererTests
 
         var result = PlantUmlRenderer.Render(diagram);
 
-        Assert.That(result, Does.Contain("Component(UserRepository, \"UserRepository\", \"User DB\", $tags=\"repository\")"));
+        Assert.That(result, Does.Contain("Component(UserRepository, \"UserRepository\", \"\", \"User DB\", $tags=\"repository\")"));
     }
 
     [Test]
@@ -150,7 +213,7 @@ public class PlantUmlRendererTests
 
         var result = PlantUmlRenderer.Render(diagram);
 
-        Assert.That(result, Does.Contain("Component(SmsGateway, \"SmsGateway\", \"External SMS\", $tags=\"gateway\")"));
+        Assert.That(result, Does.Contain("Component(SmsGateway, \"SmsGateway\", \"\", \"External SMS\", $tags=\"gateway\")"));
     }
 
     [Test]

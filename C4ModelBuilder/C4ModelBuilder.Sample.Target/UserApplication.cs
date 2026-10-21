@@ -2,7 +2,7 @@
 
 namespace C4ModelBuilder.Sample.Target
 {
-    [C4Component("User application use-case layer")]
+    [C4Component("User application use-case layer", technology: "C# / .NET 8")]
     public sealed class UserApplication : IUserApplication
     {
         private readonly IUserService _userService;

@@ -2,7 +2,7 @@
 
 namespace C4ModelBuilder.Sample.Target
 {
-    [C4Component("User data repository")]
+    [C4Component("User data repository", technology: "EF Core Repository")]
     public sealed class UserRepository : IUserRepository
     {
         private readonly IUserDataSource _userDataSource;

@@ -23,6 +23,18 @@ internal sealed class InvokedMethod
     /// </summary>
     public string? MethodDescription { get; }
 
+    /// <summary>
+    /// Технология из атрибута <c>C4Component</c> для типа/класса/интерфейса;
+    /// <c>null</c>, если атрибут не проставлен или технология не задана.
+    /// </summary>
+    public string? ClassTechnology { get; }
+
+    /// <summary>
+    /// Технология из атрибута <c>C4Component</c> для метода; <c>null</c>, если атрибут не проставлен
+    /// или технология не задана. От класса не наследуется.
+    /// </summary>
+    public string? MethodTechnology { get; }
+
     private InvokedMethod(
         ClassMethod? classMethod,
         string? className,
@@ -35,6 +47,8 @@ internal sealed class InvokedMethod
         MethodName = classMethod?.MethodSyntax.Identifier.Text ?? methodName ?? throw new ArgumentNullException(nameof(methodName));
         ClassDescription = classSymbol.GetC4ComponentAttribute().GetC4ComponentDescription();
         MethodDescription = methodSymbol?.GetC4ComponentAttribute().GetC4ComponentDescription();
+        ClassTechnology = classSymbol.GetC4ComponentAttribute().GetC4ComponentTechnology();
+        MethodTechnology = methodSymbol?.GetC4ComponentAttribute().GetC4ComponentTechnology();
     }
 
     public static InvokedMethod From(ClassMethod classMethod, INamedTypeSymbol classSymbol, IMethodSymbol? methodSymbol)

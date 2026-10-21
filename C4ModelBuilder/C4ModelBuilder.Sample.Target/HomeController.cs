@@ -2,7 +2,7 @@
 
 namespace C4ModelBuilder.Sample.Target
 {
-    [C4Component("Main page: list users and send welcome", isRoot: true)]
+    [C4Component("Main page: list users and send welcome", isRoot: true, technology: "ASP.NET Core")]
     public sealed class HomeController
     {
         private readonly Rds.Cqrs.Queries.IQueryService _queryService;
