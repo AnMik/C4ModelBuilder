@@ -14,7 +14,7 @@
 
 ## 2. Модель дерева вызовов
 
-- [ ] 2.1 Добавить в `InvocationTree` третий необязательный параметр конструктора
+- [x] 2.1 Добавить в `InvocationTree` третий необязательный параметр конструктора
   `string? c4ComponentTechnology = null` и свойство `C4ComponentTechnology`. Проверка:
   `dotnet build` зелёный, существующие вызовы `InvocationTree(name, c4ComponentDescription: …)` в тестах
   компилируются без правок
