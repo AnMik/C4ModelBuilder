@@ -65,10 +65,10 @@
 
 ## 6. Интеграционная проверка
 
-- [ ] 6.1 Прогнать `./scripts/Invoke-Sample.ps1` и убедиться, что в `.puml` описание стоит четвёртым
+- [x] 6.1 Прогнать `./scripts/Invoke-Sample.ps1` и убедиться, что в `.puml` описание стоит четвёртым
   аргументом, технология — третьим, а компоненты без технологии дают `""`. Проверка: сгенерированный
   файл содержит ожидаемую форму макроса и открывается в PlantUML без ошибок
-- [ ] 6.2 Прогнать `dotnet build C4ModelBuilder/C4ModelBuilder.sln` и
+- [x] 6.2 Прогнать `dotnet build C4ModelBuilder/C4ModelBuilder.sln` и
   `dotnet test C4ModelBuilder/C4ModelBuilder.sln` в конфигурации Release. Проверка: обе команды зелёные
 
 ## Workflow follow-up
