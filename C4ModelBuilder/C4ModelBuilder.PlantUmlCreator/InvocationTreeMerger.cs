@@ -17,6 +17,7 @@ internal static class InvocationTreeMerger
 
         var components = new HashSet<string>();
         var descriptions = new Dictionary<string, string?>();
+        var technologies = new Dictionary<string, string?>();
         var relations = new HashSet<(string From, string To)>();
         var stack = new Stack<(InvocationTree Node, string? NearestComponentAncestor)>();
         stack.Push((root, null));
@@ -35,6 +36,7 @@ internal static class InvocationTreeMerger
             {
                 components.Add(signature);
                 descriptions[signature] = node.C4ComponentDescription;
+                technologies[signature] = node.C4ComponentTechnology;
 
                 if (node.IsSameClassCall)
                 {
@@ -65,25 +67,36 @@ internal static class InvocationTreeMerger
         return new C4ComponentDiagram(
             Components: components
                 .Select(
-                    signature => new C4ComponentDiagram.C4Component(
-                        ComponentAlias: signature,
-                        ComponentName: signature,
-                        Description: descriptions.GetValueOrDefault(signature) ?? string.Empty,
-                        Type: ResolveComponentType(signature)))
+                    signature =>
+                    {
+                        var technology = technologies.GetValueOrDefault(signature);
+
+                        return new C4ComponentDiagram.C4Component(
+                            ComponentAlias: signature,
+                            ComponentName: signature,
+                            Description: descriptions.GetValueOrDefault(signature) ?? string.Empty,
+                            Type: ResolveComponentType(technology),
+                            Technology: technology);
+                    })
                 .ToList(),
             Relations: relations
                 .Select(relation => new C4ComponentDiagram.C4Relation(FromComponentAlias: relation.From, ToComponentAlias: relation.To))
                 .ToList());
     }
 
-    private static C4ComponentDiagram.Type ResolveComponentType(string componentName)
+    private static C4ComponentDiagram.Type ResolveComponentType(string? technology)
     {
-        if (componentName.Contains("Repository", StringComparison.OrdinalIgnoreCase))
+        if (technology == null)
+        {
+            return C4ComponentDiagram.Type.Normal;
+        }
+
+        if (technology.Contains("Repository", StringComparison.OrdinalIgnoreCase))
         {
             return C4ComponentDiagram.Type.Repository;
         }
 
-        if (componentName.Contains("Gateway", StringComparison.OrdinalIgnoreCase))
+        if (technology.Contains("Gateway", StringComparison.OrdinalIgnoreCase))
         {
             return C4ComponentDiagram.Type.Gateway;
         }

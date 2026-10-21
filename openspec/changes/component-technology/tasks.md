@@ -32,20 +32,20 @@
 
 ## 4. Схлопывание и рендер
 
-- [ ] 4.1 Добавить `Technology` в `C4ComponentDiagram.C4Component` после `Type`. Проверка: `dotnet build`
+- [x] 4.1 Добавить `Technology` в `C4ComponentDiagram.C4Component` после `Type`. Проверка: `dotnet build`
   зелёный, существующие позиционные конструкции в тестах компилируются
-- [ ] 4.2 Перенести технологию в `InvocationTreeMerger`, не меняя дедупликацию по `NodeName`. Проверка:
+- [x] 4.2 Перенести технологию в `InvocationTreeMerger`, не меняя дедупликацию по `NodeName`. Проверка:
   тесты `InvocationTreeMergerTests` — технология доезжает до модели, отсутствующая остаётся `null`,
   состав компонентов и связей не меняется
-- [ ] 4.3 Перевести `ResolveComponentType` на выбор тега по технологии: подстрока `Repository` без учёта
+- [x] 4.3 Перевести `ResolveComponentType` на выбор тега по технологии: подстрока `Repository` без учёта
   регистра раньше `Gateway`, иначе тег не выводится; имя компонента больше не учитывается. Проверка:
   тесты `InvocationTreeMergerTests` — `OrderRepository` без технологии получает `Normal`, а компонент с
   технологией `"EF Core Repository"` — `Repository`
-- [ ] 4.4 Перевести `PlantUmlRenderer` на `Component(alias, "Name", "Tech", "Desc"[, $tags="…"])` с
+- [x] 4.4 Перевести `PlantUmlRenderer` на `Component(alias, "Name", "Tech", "Desc"[, $tags="…"])` с
   пустой строкой вместо отсутствующей технологии. Проверка: тесты `PlantUmlRendererTests` на компонент с
   технологией, без технологии (описание остаётся четвёртым аргументом) и на технологию вместе с цветовым
   тегом
-- [ ] 4.5 Обновить существующие проверки формы макроса в `PlantUmlRendererTests` и `PlantUmlGeneratorTests`
+- [x] 4.5 Обновить существующие проверки формы макроса в `PlantUmlRendererTests` и `PlantUmlGeneratorTests`
   под четыре аргумента. Проверка: `dotnet test` зелёный
 
 ## 5. Документация и версия CLI

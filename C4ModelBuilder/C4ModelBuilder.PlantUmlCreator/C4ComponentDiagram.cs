@@ -17,7 +17,12 @@ internal sealed record C4ComponentDiagram(
         Gateway
     }
 
-    public readonly record struct C4Component(string ComponentAlias, string ComponentName, string Description, Type Type = Type.Normal);
+    public readonly record struct C4Component(
+        string ComponentAlias,
+        string ComponentName,
+        string Description,
+        Type Type = Type.Normal,
+        string? Technology = null);
 
     public readonly record struct C4Relation(string FromComponentAlias, string ToComponentAlias);
 }
